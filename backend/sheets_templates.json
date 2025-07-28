@@ -1,0 +1,294 @@
+{
+  "events_sheet_template": {
+    "sheet_name": "Lagos Events Database",
+    "worksheets": [
+      {
+        "name": "Events",
+        "headers": [
+          "Title",
+          "Description", 
+          "Date",
+          "Time",
+          "Location",
+          "Area",
+          "Event Type",
+          "Vibe",
+          "Ticket Link",
+          "Image URL"
+        ],
+        "sample_data": [
+          [
+            "Palmwine Music Fest",
+            "Afrobeats and traditional music celebration with top Nigerian artists",
+            "2024-12-16",
+            "20:00",
+            "Eko Convention Centre",
+            "victoria_island",
+            "concert",
+            "Musical vibes & live energy",
+            "https://tickets.palmwinefest.com",
+            "https://example.com/palmwine-poster.jpg"
+          ],
+          [
+            "AfroBeach Party",
+            "Beach party with DJ sets, cocktails and ocean vibes",
+            "2024-12-17",
+            "15:00",
+            "Landmark Beach",
+            "lekki",
+            "beach_party",
+            "Sun, sand & good times",
+            "https://afrobeach.eventbrite.com",
+            "https://example.com/afrobeach-poster.jpg"
+          ],
+          [
+            "Turn Up Thursdays",
+            "Weekly party with top DJs and celebrity appearances",
+            "2024-12-21",
+            "21:00",
+            "Quilox Nightclub",
+            "lekki",
+            "club_night",
+            "Turn up & dance all night",
+            "https://quilox.com/tickets",
+            "https://example.com/turnup-poster.jpg"
+          ],
+          [
+            "Sunday Brunch Vibes",
+            "Relaxed brunch with live acoustic music and great food",
+            "2024-12-22",
+            "12:00",
+            "Terra Kulture",
+            "victoria_island",
+            "brunch",
+            "Chill & sophisticated",
+            "https://terra.eventbrite.com",
+            "https://example.com/brunch-poster.jpg"
+          ],
+          [
+            "Detty December Festival",
+            "The biggest year-end celebration with multiple stages and top artists",
+            "2024-12-28",
+            "18:00",
+            "Tafawa Balewa Square",
+            "surulere",
+            "detty_december",
+            "Epic year-end celebration",
+            "https://detty.eventbrite.com",
+            "https://example.com/detty-poster.jpg"
+          ]
+        ]
+      }
+    ]
+  },
+  
+  "accommodations_sheet_template": {
+    "sheet_name": "Lagos Accommodations Database",
+    "worksheets": [
+      {
+        "name": "Accommodations",
+        "headers": [
+          "Name",
+          "Type",
+          "Area", 
+          "Price Per Night",
+          "Currency",
+          "Features",
+          "Rating",
+          "Contact",
+          "Booking Link",
+          "Image URL",
+          "Availability"
+        ],
+        "sample_data": [
+          [
+            "Radisson Blu Anchorage Hotel",
+            "hotel",
+            "victoria_island",
+            "45000",
+            "NGN",
+            "Pool, Gym, Restaurant, Spa, Business Center",
+            "4.2",
+            "+234 1 448 8800",
+            "https://booking.com/radisson-anchorage",
+            "https://example.com/radisson-image.jpg",
+            "available"
+          ],
+          [
+            "Lekki Dreams Shortlet",
+            "shortlet",
+            "lekki",
+            "25000",
+            "NGN",
+            "Kitchen, WiFi, Parking, Balcony",
+            "4.5",
+            "+234 803 456 7890",
+            "https://airbnb.com/lekki-dreams",
+            "https://example.com/lekki-dreams.jpg",
+            "available"
+          ],
+          [
+            "Oceanview Apartments Oniru",
+            "shortlet",
+            "lekki",
+            "35000",
+            "NGN",
+            "Beach Access, Balcony, Kitchen, Security",
+            "4.3",
+            "+234 807 123 4567",
+            "https://oceanview-oniru.com",
+            "https://example.com/oceanview.jpg",
+            "limited"
+          ],
+          [
+            "Mainland Guest House",
+            "guesthouse",
+            "ikeja",
+            "15000",
+            "NGN",
+            "WiFi, Parking, Continental Breakfast",
+            "3.8",
+            "+234 801 987 6543",
+            "https://mainland-guest.com",
+            "https://example.com/mainland-guest.jpg",
+            "available"
+          ],
+          [
+            "Ikoyi Luxury Suites",
+            "hotel",
+            "ikoyi",
+            "60000",
+            "NGN",
+            "Luxury amenities, Concierge, Spa, Fine dining",
+            "4.7",
+            "+234 1 555 0123",
+            "https://ikoyiluxury.com",
+            "https://example.com/ikoyi-luxury.jpg",
+            "available"
+          ]
+        ]
+      }
+    ]
+  },
+
+  "outfits_sheet_template": {
+    "sheet_name": "Lagos Outfit Guide",
+    "worksheets": [
+      {
+        "name": "Outfits",
+        "headers": [
+          "Event Type",
+          "Gender",
+          "Style Name",
+          "Description",
+          "Items",
+          "Vibe",
+          "Image URL",
+          "Shop Links"
+        ],
+        "sample_data": [
+          [
+            "beach_party",
+            "female",
+            "Tropical Goddess",
+            "Bright ankara bikini with flowing cover-up and gold accessories",
+            "Ankara bikini, Sheer cover-up, Gold jewelry, Sun hat, Flat sandals",
+            "Effortlessly chic",
+            "https://example.com/tropical-goddess.jpg",
+            "https://shop1.com/ankara-bikini, https://shop2.com/coverup"
+          ],
+          [
+            "beach_party", 
+            "male",
+            "Beach King",
+            "Linen shirt with swim shorts and fresh sneakers",
+            "Linen button-down, Swim shorts, White sneakers, Cap, Sunglasses",
+            "Cool & comfortable",
+            "https://example.com/beach-king.jpg",
+            "https://shop3.com/linen-shirt, https://shop4.com/swim-shorts"
+          ],
+          [
+            "concert",
+            "female", 
+            "Music Festival Queen",
+            "Crop top with high-waisted pants and statement accessories",
+            "Graphic crop top, High-waisted jeans, Chunky sneakers, Statement earrings, Crossbody bag",
+            "Trendy & comfortable",
+            "https://example.com/festival-queen.jpg",
+            "https://shop5.com/crop-top, https://shop6.com/high-waist-jeans"
+          ],
+          [
+            "concert",
+            "male",
+            "Concert Cool Guy",
+            "Graphic t-shirt with jeans and comfortable sneakers",
+            "Band t-shirt, Dark jeans, Fresh sneakers, Cap, Simple chain",
+            "Casual & cool",
+            "https://example.com/concert-guy.jpg",
+            "https://shop7.com/graphic-tee, https://shop8.com/jeans"
+          ],
+          [
+            "club_night",
+            "female",
+            "Lagos Nightlife Queen",
+            "Bodycon dress with heels and statement jewelry",
+            "Bodycon dress, Strappy heels, Statement necklace, Clutch bag, Bold makeup",
+            "Glamorous & confident",
+            "https://example.com/nightlife-queen.jpg",
+            "https://shop9.com/bodycon-dress, https://shop10.com/heels"
+          ],
+          [
+            "club_night",
+            "male",
+            "Lagos Nightlife King",
+            "Fitted shirt with dress pants and loafers",
+            "Fitted dress shirt, Tailored trousers, Leather loafers, Watch, Cologne",
+            "Sophisticated & fresh",
+            "https://example.com/nightlife-king.jpg",
+            "https://shop11.com/dress-shirt, https://shop12.com/trousers"
+          ],
+          [
+            "brunch",
+            "female",
+            "Sunday Funday Chic",
+            "Flowy midi dress with comfortable wedges and sun hat",
+            "Midi dress, Wedge sandals, Sun hat, Tote bag, Delicate jewelry",
+            "Relaxed elegance",
+            "https://example.com/sunday-chic.jpg",
+            "https://shop13.com/midi-dress, https://shop14.com/wedges"
+          ],
+          [
+            "brunch",
+            "male",
+            "Brunch Gentleman",
+            "Polo shirt with chinos and loafers",
+            "Polo shirt, Chino pants, Loafers, Watch, Sunglasses",
+            "Smart casual",
+            "https://example.com/brunch-gent.jpg",
+            "https://shop15.com/polo-shirt, https://shop16.com/chinos"
+          ],
+          [
+            "detty_december",
+            "female",
+            "Detty December Diva",
+            "Sequined mini dress with heels and statement jewelry",
+            "Sequined dress, Strappy heels, Statement necklace, Clutch purse, Bold makeup",
+            "Glamorous & festive",
+            "https://example.com/detty-diva.jpg",
+            "https://shop17.com/sequin-dress, https://shop18.com/heels"
+          ],
+          [
+            "detty_december",
+            "male",
+            "Detty December King",
+            "Designer shirt with luxury accessories",
+            "Designer button-down, Dark jeans, Designer sneakers, Gold watch, Chain",
+            "Luxury casual",
+            "https://example.com/detty-king.jpg",
+            "https://shop19.com/designer-shirt, https://shop20.com/designer-sneakers"
+          ]
+        ]
+      }
+    ]
+  }
+}

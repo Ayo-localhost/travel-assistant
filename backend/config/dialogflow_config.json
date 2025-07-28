@@ -1,0 +1,428 @@
+{
+  "displayName": "Lagos Travel Guide - Basic",
+  "defaultLanguageCode": "en",
+  "description": "Basic conversational AI travel guide for Lagos State",
+  "timeZone": "Africa/Lagos",
+  "enableStackdriverLogging": true,
+  "enableSpellCheck": true,
+  "flows": [
+    {
+      "name": "Default Start Flow",
+      "displayName": "Main Flow",
+      "description": "Main conversation flow for the travel guide",
+      "nluSettings": {
+        "modelType": "MODEL_TYPE_ADVANCED",
+        "classificationThreshold": 0.3
+      },
+      "pages": [
+        {
+          "displayName": "Start Page",
+          "entryFulfillment": {
+            "messages": [
+              {
+                "text": {
+                  "text": [
+                    "Welcome to your Lagos travel companion! 🌟 I'm here to help you discover the best of Lagos. What can I help you with today?"
+                  ]
+                }
+              },
+              {
+                "payload": {
+                  "richContent": [
+                    [
+                      {
+                        "type": "chips",
+                        "options": [
+                          {
+                            "text": "🔥 What's happening this week?"
+                          },
+                          {
+                            "text": "🏠 Where should I stay?"
+                          },
+                          {
+                            "text": "👗 What should I wear?"
+                          },
+                          {
+                            "text": "❓ Help me with Lagos"
+                          }
+                        ]
+                      }
+                    ]
+                  ]
+                }
+              }
+            ]
+          },
+          "transitionRoutes": [
+            {
+              "intent": "events.inquiry",
+              "triggerFulfillment": {
+                "webhook": "main-webhook"
+              }
+            },
+            {
+              "intent": "accommodation.inquiry",
+              "triggerFulfillment": {
+                "webhook": "main-webhook"
+              }
+            },
+            {
+              "intent": "outfit.suggestions",
+              "triggerFulfillment": {
+                "webhook": "main-webhook"
+              }
+            },
+            {
+              "intent": "Default Fallback Intent",
+              "triggerFulfillment": {
+                "webhook": "main-webhook"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "intents": [
+    {
+      "displayName": "events.inquiry",
+      "trainingPhrases": [
+        {
+          "parts": [
+            {
+              "text": "What's happening this week"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Show me events"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "What events are on"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Events in Lagos"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "What's popping this weekend"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Concert this week"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Beach party events"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Show me "
+            },
+            {
+              "parameterValue": "@event_types",
+              "text": "concerts"
+            },
+            {
+              "text": " in "
+            },
+            {
+              "parameterValue": "@lagos_areas",
+              "text": "Lekki"
+            }
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "id": "event_type",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/event_types"
+        },
+        {
+          "id": "area",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/lagos_areas"
+        }
+      ]
+    },
+    {
+      "displayName": "accommodation.inquiry",
+      "trainingPhrases": [
+        {
+          "parts": [
+            {
+              "text": "Where should I stay"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Hotels in Lagos"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Shortlets available"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Accommodation options"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Places to stay"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "I need a "
+            },
+            {
+              "parameterValue": "@accommodation_types",
+              "text": "hotel"
+            },
+            {
+              "text": " in "
+            },
+            {
+              "parameterValue": "@lagos_areas",
+              "text": "Victoria Island"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Budget under "
+            },
+            {
+              "parameterValue": "@sys.number",
+              "text": "30000"
+            }
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "id": "accommodation_type",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/accommodation_types"
+        },
+        {
+          "id": "area",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/lagos_areas"
+        },
+        {
+          "id": "max_budget",
+          "entityType": "@sys.number"
+        }
+      ]
+    },
+    {
+      "displayName": "outfit.suggestions",
+      "trainingPhrases": [
+        {
+          "parts": [
+            {
+              "text": "What should I wear"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Outfit suggestions"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "What to wear to"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Dress code for"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "What should I wear to a "
+            },
+            {
+              "parameterValue": "@event_types",
+              "text": "beach party"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Show me "
+            },
+            {
+              "parameterValue": "@gender_types",
+              "text": "female"
+            },
+            {
+              "text": " outfits for "
+            },
+            {
+              "parameterValue": "@event_types",
+              "text": "concerts"
+            }
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "id": "event_type",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/event_types"
+        },
+        {
+          "id": "gender",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/gender_types"
+        }
+      ]
+    }
+  ],
+  "entityTypes": [
+    {
+      "displayName": "lagos_areas",
+      "kind": "KIND_MAP",
+      "entities": [
+        {
+          "value": "victoria_island",
+          "synonyms": ["VI", "Victoria Island", "Island", "vic island", "victoria island"]
+        },
+        {
+          "value": "lekki",
+          "synonyms": ["Lekki", "Lekki Phase 1", "Phase 1", "Admiralty", "lekki"]
+        },
+        {
+          "value": "ikeja",
+          "synonyms": ["Ikeja", "Mainland", "GRA", "ikeja"]
+        },
+        {
+          "value": "ikoyi",
+          "synonyms": ["Ikoyi", "Old Ikoyi", "Banana Island", "ikoyi"]
+        },
+        {
+          "value": "surulere",
+          "synonyms": ["Surulere", "Suru", "National Theatre area", "surulere"]
+        }
+      ]
+    },
+    {
+      "displayName": "event_types",
+      "kind": "KIND_MAP",
+      "entities": [
+        {
+          "value": "concert",
+          "synonyms": ["concert", "music show", "live music", "performance", "concerts"]
+        },
+        {
+          "value": "beach_party",
+          "synonyms": ["beach party", "beach event", "beach vibes", "pool party", "beach parties"]
+        },
+        {
+          "value": "brunch",
+          "synonyms": ["brunch", "day party", "afternoon event", "sunday funday"]
+        },
+        {
+          "value": "club_night",
+          "synonyms": ["club night", "turn up", "party", "nightlife", "club"]
+        },
+        {
+          "value": "detty_december",
+          "synonyms": ["detty december", "december party", "festive event", "year end party"]
+        }
+      ]
+    },
+    {
+      "displayName": "accommodation_types",
+      "kind": "KIND_MAP",
+      "entities": [
+        {
+          "value": "hotel",
+          "synonyms": ["hotel", "resort", "luxury hotel", "hotels"]
+        },
+        {
+          "value": "shortlet",
+          "synonyms": ["shortlet", "apartment", "airbnb", "short stay", "shortlets"]
+        },
+        {
+          "value": "guesthouse",
+          "synonyms": ["guesthouse", "guest house", "lodge", "guesthouses"]
+        }
+      ]
+    },
+    {
+      "displayName": "gender_types",
+      "kind": "KIND_MAP",
+      "entities": [
+        {
+          "value": "male",
+          "synonyms": ["male", "men", "guys", "men's", "masculine"]
+        },
+        {
+          "value": "female",
+          "synonyms": ["female", "women", "ladies", "women's", "feminine"]
+        },
+        {
+          "value": "unisex",
+          "synonyms": ["unisex", "both", "all", "everyone"]
+        }
+      ]
+    }
+  ],
+  "webhooks": [
+    {
+      "displayName": "main-webhook",
+      "genericWebService": {
+        "uri": "https://your-domain.com/webhook",
+        "httpMethod": "POST",
+        "requestHeaders": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  ],
+  "startFlow": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/flows/FLOW_ID"
+}

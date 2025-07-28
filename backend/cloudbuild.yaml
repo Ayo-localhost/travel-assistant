@@ -1,0 +1,50 @@
+# cloudbuild.yaml
+# This file defines the steps for Google Cloud Build to build and deploy
+# your Next.js application to Cloud Run.
+
+steps:
+  # Step 1: Build the Docker image
+  # This uses the 'cloud-build-local' builder to build the Dockerfile
+  # located in the current directory.
+  # The image is tagged with gcr.io/PROJECT_ID/TRIGGER_NAME, which is Google Container Registry.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build Docker Image'
+    args:
+      - 'build'
+      - '-t'
+      - 'eu.gcr.io/$PROJECT_ID/$TRIGGER_NAME:$SHORT_SHA'
+      - '-f'
+      - 'backend/Dockerfile'
+      - 'travel-assistant' # The context directory for the Docker build
+
+
+  # Step 2: Push the Docker image to Google Container Registry
+  # This step pushes the newly built image to the specified registry path.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push Docker Image'
+    args:
+      - 'push'
+      - 'eu.gcr.io/$PROJECT_ID/$TRIGGER_NAME:$SHORT_SHA'
+
+  # Step 3: Deploy the image to Cloud Run
+  # This step uses the 'cloud-builders/gcloud' builder to deploy the
+  # container image to Cloud Run.
+  # It references the image built in the previous steps.
+  # The --set-env-vars flag is used to pass the GEMINI_API_KEY securely
+  # from Cloud Build's secret manager.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Deploy to Cloud Run'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${TRIGGER_NAME}' # The name of your Cloud Run service
+      - '--image'
+      - 'eu.gcr.io/$PROJECT_ID/$TRIGGER_NAME:$SHORT_SHA' # The image to deploy
+      - '--region=$LOCATION' # The GCP region for deployment
+      - '--platform=managed' # Use the fully managed Cloud Run environment
+      - '--allow-unauthenticated' # Allow public access to the service
+
+
+options:
+  logging: CLOUD_LOGGING_ONLY

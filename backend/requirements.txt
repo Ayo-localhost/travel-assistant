@@ -1,0 +1,11 @@
+flask==2.3.3
+google-cloud-dialogflow-cx==1.14.0
+google-api-python-client==2.103.0
+google-auth==2.23.4
+requests==2.31.0
+beautifulsoup4==4.12.2
+pandas==2.1.1
+schedule==1.2.0
+python-dotenv==1.0.0
+gunicorn==21.2.0
+pytest==7.4.2
