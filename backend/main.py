@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 class SimpleDataStore:
     def __init__(self):
         # Load template data
-        with open('sheet_templates.json', 'r') as f:
+        with open('sheets_templates.json', 'r') as f:
             self.data = json.load(f)
         
         # Extract sample data from templates
