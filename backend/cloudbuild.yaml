@@ -15,7 +15,7 @@ steps:
       - 'eu.gcr.io/$PROJECT_ID/$TRIGGER_NAME:$SHORT_SHA'
       - '-f'
       - 'backend/Dockerfile'
-      - 'travel-assistant' # The context directory for the Docker build
+      - 'backend' # The context directory for the Docker build
 
 
   # Step 2: Push the Docker image to Google Container Registry
