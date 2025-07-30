@@ -3,7 +3,10 @@ from datetime import datetime, timedelta
 import logging
 import gspread
 from google.oauth2.service_account import Credentials
+from google.cloud import storage
 import os
+import json
+import tempfile
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -35,23 +38,64 @@ class GoogleSheetsDataStore:
         self.gc = None
         self._initialize_sheets_client()
     
+    def _download_service_account_from_gcs(self):
+        """Download service account key from Google Cloud Storage"""
+        try:
+            # GCS bucket and file details
+            bucket_name = 'travel-assistant-demo'
+            blob_name = 'service-account-key.json'
+            
+            # Initialize storage client (uses default credentials or ADC)
+            storage_client = storage.Client()
+            bucket = storage_client.bucket(bucket_name)
+            blob = bucket.blob(blob_name)
+            
+            # Download to temporary file
+            temp_file = tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False)
+            blob.download_to_filename(temp_file.name)
+            
+            logging.info(f"Successfully downloaded service account key from GCS: gs://{bucket_name}/{blob_name}")
+            return temp_file.name
+            
+        except Exception as e:
+            logging.error(f"Failed to download service account key from GCS: {e}")
+            return None
+    
     def _initialize_sheets_client(self):
         """Initialize Google Sheets client with service account credentials"""
         try:
-            # Try to load credentials from service account file
-            creds_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'service-account-key.json')
+            creds = None
+            temp_file_path = None
             
-            if os.path.exists(creds_file):
-                creds = Credentials.from_service_account_file(creds_file, scopes=SCOPES)
-            else:
-                # Try to load from environment variables (for deployment)
-                import json
+            # Method 1: Try to download from GCS
+            temp_file_path = self._download_service_account_from_gcs()
+            if temp_file_path and os.path.exists(temp_file_path):
+                creds = Credentials.from_service_account_file(temp_file_path, scopes=SCOPES)
+                logging.info("Loaded credentials from GCS")
+                
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_file_path)
+                except:
+                    pass
+            
+            # Method 2: Try local service account file (fallback)
+            elif not creds:
+                creds_file = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', 'service-account-key.json')
+                if os.path.exists(creds_file):
+                    creds = Credentials.from_service_account_file(creds_file, scopes=SCOPES)
+                    logging.info("Loaded credentials from local file")
+            
+            # Method 3: Try environment variables (fallback)
+            if not creds:
                 creds_json = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
                 if creds_json:
                     creds_info = json.loads(creds_json)
                     creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-                else:
-                    raise Exception("No Google Service Account credentials found")
+                    logging.info("Loaded credentials from environment variables")
+            
+            if not creds:
+                raise Exception("No Google Service Account credentials found in GCS, local file, or environment variables")
             
             self.gc = gspread.authorize(creds)
             logging.info("Google Sheets client initialized successfully")
@@ -367,7 +411,7 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'service': 'Lagos Travel Guide - Google Sheets Version',
-        'sheets_connected': self.gc is not None if hasattr(data_store, 'gc') else False
+        'sheets_connected': data_store.gc is not None
     })
 
 @app.route('/test-sheets', methods=['GET'])
