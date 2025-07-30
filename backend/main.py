@@ -4,12 +4,30 @@ import logging
 import gspread
 from google.oauth2.service_account import Credentials
 from google.cloud import storage
+from google.cloud import dialogflowcx_v3beta1 as dialogflow_cx
+from google.api_core.client_options import ClientOptions
 import os
 import json
 import tempfile
+import uuid
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
+
+# Dialogflow CX Configuration
+PROJECT_ID = "codematic-playground"  # Extracted from your agent URL
+AGENT_ID = "10a6c174-ed65-4549-894d-eaa4dfa3d432"  # Extracted from your agent URL
+REGION = "global"  # Extracted from your agent URL
+LANGUAGE_CODE = "en-US"
+
+# Configure the Dialogflow CX client
+if REGION and REGION != "global":
+    client_options = ClientOptions(api_endpoint=f"{REGION}-dialogflow.googleapis.com:443")
+else:
+    client_options = None
+
+# Initialize Dialogflow CX SessionsClient
+session_client = dialogflow_cx.SessionsClient(client_options=client_options)
 
 # Google Sheets configuration
 SCOPES = [
@@ -324,6 +342,68 @@ def format_outfit_response(outfits, event_type):
     response_text += "Want to see couple's fits, shop these looks, or try a different style? 💑🛍️"
     
     return response_text
+
+@app.route('/chat', methods=['POST'])
+def chat_with_agent():
+    """
+    New endpoint: Receives a message from frontend, sends it to Dialogflow CX agent,
+    and returns the agent's response. The agent will call the webhook if needed.
+    """
+    try:
+        if not request.is_json:
+            return jsonify({"error": "Request must be JSON"}), 400
+
+        data = request.get_json()
+        user_message = data.get('message')
+        user_id = data.get('user_id', str(uuid.uuid4()))  # Generate unique session if not provided
+
+        if not user_message:
+            return jsonify({"error": "Message field is required"}), 400
+
+        # Create unique session ID for this user
+        session_id = f"session-{user_id}"
+        
+        # Construct the session path for Dialogflow CX
+        session_path = session_client.session_path(PROJECT_ID, REGION, AGENT_ID, session_id)
+
+        # Create a TextInput object
+        text_input = dialogflow_cx.types.TextInput(text=user_message)
+
+        # Create a QueryInput object with language_code
+        query_input = dialogflow_cx.types.QueryInput(
+            text=text_input,
+            language_code=LANGUAGE_CODE
+        )
+
+        # Send the query to Dialogflow CX
+        response = session_client.detect_intent(
+            request={"session": session_path, "query_input": query_input}
+        )
+
+        # Extract the fulfillment text from Dialogflow CX's response
+        fulfillment_texts = [
+            message.text.text[0]
+            for message in response.query_result.response_messages
+            if message.text.text
+        ]
+        fulfillment_text = " ".join(fulfillment_texts)
+
+        # Log the interaction
+        logging.info(f"User Query: {response.query_result.text}")
+        logging.info(f"Detected Intent: {response.query_result.match.intent.display_name if response.query_result.match.intent else 'N/A'}")
+        logging.info(f"Confidence: {response.query_result.match.confidence if response.query_result.match.intent else 'N/A'}")
+        logging.info(f"Agent Response: {fulfillment_text}")
+
+        return jsonify({
+            "response": fulfillment_text,
+            "intent": response.query_result.match.intent.display_name if response.query_result.match.intent else None,
+            "confidence": response.query_result.match.confidence if response.query_result.match.intent else None,
+            "session_id": session_id
+        })
+
+    except Exception as e:
+        logging.error(f"Error calling Dialogflow CX API: {e}")
+        return jsonify({"error": f"Could not process your request: {str(e)}"}), 500
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
