@@ -1,5 +1,5 @@
 flask==2.3.3
-google-cloud-dialogflow-cx==1.14.0
+google-cloud-dialogflowcx==1.14.0
 google-api-python-client==2.103.0
 google-auth==2.23.4
 requests==2.31.0
@@ -13,4 +13,6 @@ gspread==5.12.0
 google-auth-oauthlib==1.1.0
 google-auth-httplib2==0.1.1
 google-cloud-storage==2.10.0
-requests==2.31.0
+google-api-core==2.12.0
+proto-plus==1.22.3
+protobuf==4.24.4
