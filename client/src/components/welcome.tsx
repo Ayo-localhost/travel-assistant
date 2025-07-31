@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import {
   Button,
   Input,
@@ -24,6 +25,9 @@ const { Title, Paragraph, Text } = Typography;
 
 export default function TravelAdvisor() {
   const { token } = theme.useToken();
+  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+
   const {
     messages,
     input,
@@ -33,6 +37,19 @@ export default function TravelAdvisor() {
     sendMessage,
   } = useTravelChat();
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
+
+  const scrollToBottom = () => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  };
+
   const suggestedQuestions = [
     "Plan a 7-day trip to Lagos for first-time visitors",
     "Best budget destinations in Africa for summer",
@@ -41,26 +58,7 @@ export default function TravelAdvisor() {
   ];
 
   const handleSuggestedQuestion = (question) => {
-    const form = document.createElement("form");
-    const inputEl = document.createElement("input");
-    inputEl.name = "prompt";
-    inputEl.value = question;
-    form.appendChild(inputEl);
-    const event = new Event("submit", {
-      bubbles: true,
-      cancelable: true,
-    });
-    Object.defineProperty(event, "target", {
-      value: form,
-      enumerable: true,
-    });
-    Object.defineProperty(event, "currentTarget", {
-      value: form,
-      enumerable: true,
-    });
     sendMessage(question);
-
-    // handleSubmit(event);
   };
 
   const customTheme = {
@@ -118,7 +116,6 @@ export default function TravelAdvisor() {
                   AI Travel Advisor
                 </Title>
               </Flex>
-
               <Paragraph
                 style={{
                   fontSize: 18,
@@ -142,9 +139,22 @@ export default function TravelAdvisor() {
               overflow: "hidden",
             }}
             title={
-              <Flex align="center" gap={12}>
-                <CompassOutlined style={{ fontSize: 20 }} />
-                <span>Chat with your Travel Advisor</span>
+              <Flex align="center" gap={12} justify="space-between">
+                <Flex align="center" gap={12}>
+                  <CompassOutlined style={{ fontSize: 20 }} />
+                  <span>Chat with your Travel Advisor</span>
+                </Flex>
+                {/* Optional: Add scroll to bottom button */}
+                {messages.length > 3 && (
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={scrollToBottom}
+                    style={{ color: "white" }}
+                  >
+                    ↓ Latest
+                  </Button>
+                )}
               </Flex>
             }
             headStyle={{
@@ -156,13 +166,15 @@ export default function TravelAdvisor() {
             }}
             bodyStyle={{ padding: 0 }}
           >
-            {/* Messages Area */}
+            {/* Messages Area with ref */}
             <div
+              ref={messagesContainerRef}
               style={{
                 height: 500,
                 overflowY: "auto",
                 padding: 24,
                 background: token.colorBgContainer,
+                scrollBehavior: "smooth", // Enable smooth scrolling
               }}
             >
               {messages.length === 0 ? (
@@ -195,7 +207,6 @@ export default function TravelAdvisor() {
                         tips!
                       </Text>
                     </div>
-
                     <div style={{ maxWidth: 500, margin: "0 auto" }}>
                       <Text
                         strong
@@ -250,9 +261,9 @@ export default function TravelAdvisor() {
                   size="large"
                   style={{ width: "100%" }}
                 >
-                  {messages.map((message) => (
+                  {messages.map((message, index) => (
                     <div
-                      key={message.id}
+                      key={`${message.id}-${index}`}
                       style={{
                         display: "flex",
                         gap: 12,
@@ -260,6 +271,10 @@ export default function TravelAdvisor() {
                           message.role === "user" ? "flex-end" : "flex-start",
                         alignItems: "flex-start",
                       }}
+                      // Add special styling for the last message
+                      className={
+                        index === messages.length - 1 ? "last-message" : ""
+                      }
                     >
                       {message.role === "assistant" && (
                         <Avatar
@@ -268,11 +283,15 @@ export default function TravelAdvisor() {
                             backgroundColor: token.colorPrimary,
                             flexShrink: 0,
                             boxShadow: `0 4px 12px ${token.colorPrimary}30`,
+                            // Highlight last message
+                            ...(index === messages.length - 1 && {
+                              boxShadow: `0 6px 16px ${token.colorPrimary}50`,
+                              transform: "scale(1.05)",
+                            }),
                           }}
                           icon={<RocketOutlined />}
                         />
                       )}
-
                       <div
                         style={{
                           maxWidth: "75%",
@@ -289,6 +308,15 @@ export default function TravelAdvisor() {
                               ? `0 4px 12px ${token.colorPrimary}30`
                               : `0 2px 8px ${token.colorBgElevated}60`,
                           position: "relative",
+                          // Highlight last message
+                          ...(index === messages.length - 1 && {
+                            boxShadow:
+                              message.role === "user"
+                                ? `0 6px 16px ${token.colorPrimary}50`
+                                : `0 4px 12px ${token.colorBgElevated}80`,
+                            transform: "scale(1.02)",
+                            transition: "all 0.3s ease",
+                          }),
                         }}
                       >
                         <Text
@@ -300,12 +328,31 @@ export default function TravelAdvisor() {
                             whiteSpace: "pre-wrap",
                             lineHeight: 1.6,
                             fontSize: 15,
+                            display: "block",
                           }}
                         >
                           {message.content}
                         </Text>
+                        {/* Show "Latest" badge on last message */}
+                        {index === messages.length - 1 &&
+                          messages.length > 1 && (
+                            <div
+                              style={{
+                                position: "absolute",
+                                top: -8,
+                                right: -8,
+                                backgroundColor: token.colorSuccess,
+                                color: "white",
+                                fontSize: 10,
+                                padding: "2px 6px",
+                                borderRadius: 8,
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Latest
+                            </div>
+                          )}
                       </div>
-
                       {message.role === "user" && (
                         <Avatar
                           size={40}
@@ -313,6 +360,11 @@ export default function TravelAdvisor() {
                             backgroundColor: token.colorTextSecondary,
                             flexShrink: 0,
                             boxShadow: `0 4px 12px ${token.colorTextSecondary}30`,
+                            // Highlight last message
+                            ...(index === messages.length - 1 && {
+                              boxShadow: `0 6px 16px ${token.colorTextSecondary}50`,
+                              transform: "scale(1.05)",
+                            }),
                           }}
                           icon={<UserOutlined />}
                         />
@@ -369,6 +421,9 @@ export default function TravelAdvisor() {
                       </div>
                     </div>
                   )}
+
+                  {/* Invisible element to scroll to */}
+                  <div ref={messagesEndRef} style={{ height: 1 }} />
                 </Space>
               )}
             </div>
@@ -381,7 +436,7 @@ export default function TravelAdvisor() {
                 padding: 20,
               }}
             >
-              <div onSubmit={handleSubmit}>
+              <form onSubmit={handleSubmit}>
                 <Flex gap={12}>
                   <Input
                     name="prompt"
@@ -389,7 +444,6 @@ export default function TravelAdvisor() {
                     onChange={handleInputChange}
                     placeholder="Ask about destinations, travel tips, planning advice..."
                     disabled={isLoading}
-                    className="py-2 px-4"
                     size="large"
                     onPressEnter={(e) => {
                       e.preventDefault();
@@ -400,7 +454,7 @@ export default function TravelAdvisor() {
                     style={{
                       flex: 1,
                       borderRadius: 12,
-                      fontSize: 18,
+                      fontSize: 16,
                     }}
                     suffix={
                       <EnvironmentOutlined
@@ -413,15 +467,11 @@ export default function TravelAdvisor() {
                   />
                   <Button
                     type="primary"
+                    htmlType="submit"
                     disabled={isLoading || !input.trim()}
                     size="large"
                     loading={isLoading}
                     icon={!isLoading && <SendOutlined />}
-                    onClick={(e) => {
-                      if (!isLoading && input.trim()) {
-                        handleSubmit(e);
-                      }
-                    }}
                     style={{
                       borderRadius: 12,
                       minWidth: 60,
@@ -432,7 +482,7 @@ export default function TravelAdvisor() {
                     }}
                   />
                 </Flex>
-              </div>
+              </form>
             </div>
           </Card>
 
