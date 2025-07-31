@@ -1,4 +1,3 @@
-import { useChat } from "ai/react";
 import {
   Button,
   Input,
@@ -19,13 +18,20 @@ import {
   CompassOutlined,
   UserOutlined,
 } from "@ant-design/icons";
+import { useTravelChat } from "@/lib/useTravelChat";
 
 const { Title, Paragraph, Text } = Typography;
 
 export default function TravelAdvisor() {
   const { token } = theme.useToken();
-  const { messages, input, handleInputChange, handleSubmit, isLoading } =
-    useChat();
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    sendMessage,
+  } = useTravelChat();
 
   const suggestedQuestions = [
     "Plan a 7-day trip to Lagos for first-time visitors",
@@ -52,7 +58,9 @@ export default function TravelAdvisor() {
       value: form,
       enumerable: true,
     });
-    handleSubmit(event);
+    sendMessage(question);
+
+    // handleSubmit(event);
   };
 
   const customTheme = {
@@ -173,14 +181,6 @@ export default function TravelAdvisor() {
                     style={{ width: "100%" }}
                   >
                     <div>
-                      {/* <RocketOutlined
-                        style={{
-                          fontSize: 80,
-                          color: token.blue3,
-                          marginBottom: 24,
-                          display: "block",
-                        }}
-                      /> */}
                       <Title
                         level={3}
                         style={{

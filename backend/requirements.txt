@@ -1,4 +1,5 @@
 flask==2.3.3
+flask-cors==6.0.1
 google-cloud-dialogflow-cx==1.14.0
 google-api-python-client==2.103.0
 google-auth==2.23.4
