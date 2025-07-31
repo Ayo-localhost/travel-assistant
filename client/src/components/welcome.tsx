@@ -1,15 +1,30 @@
-"use client";
-
+import React from "react";
 import { useChat } from "ai/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plane, Send, MapPin, Loader2 } from "lucide-react";
-import type { FormEvent } from "react";
+import {
+  Button,
+  Input,
+  Card,
+  Avatar,
+  Spin,
+  Typography,
+  Space,
+  Flex,
+  theme,
+  ConfigProvider,
+} from "antd";
+import {
+  SendOutlined,
+  EnvironmentOutlined,
+  LoadingOutlined,
+  RocketOutlined,
+  CompassOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+
+const { Title, Paragraph, Text } = Typography;
 
 export default function TravelAdvisor() {
+  const { token } = theme.useToken();
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
     useChat();
 
@@ -20,18 +35,16 @@ export default function TravelAdvisor() {
     "Recommend romantic getaways in Nigeria",
   ];
 
-  const handleSuggestedQuestion = (question: string) => {
-    // Create a proper form event for React 19
+  const handleSuggestedQuestion = (question) => {
     const form = document.createElement("form");
-    const input = document.createElement("input");
-    input.name = "prompt";
-    input.value = question;
-    form.appendChild(input);
-
+    const inputEl = document.createElement("input");
+    inputEl.name = "prompt";
+    inputEl.value = question;
+    form.appendChild(inputEl);
     const event = new Event("submit", {
       bubbles: true,
       cancelable: true,
-    }) as unknown as FormEvent<HTMLFormElement>;
+    });
     Object.defineProperty(event, "target", {
       value: form,
       enumerable: true,
@@ -40,162 +53,405 @@ export default function TravelAdvisor() {
       value: form,
       enumerable: true,
     });
-
     handleSubmit(event);
   };
 
+  const customTheme = {
+    token: {
+      colorPrimary: "#1890ff",
+      borderRadius: 8,
+    },
+    components: {
+      Card: {
+        borderRadiusLG: 16,
+      },
+      Button: {
+        borderRadius: 8,
+      },
+      Input: {
+        borderRadius: 8,
+      },
+    },
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Plane className="h-8 w-8 text-blue-600" />
-            <h1 className="text-4xl font-bold text-gray-800">
-              AI Travel Advisor
-            </h1>
+    <ConfigProvider theme={customTheme}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: `linear-gradient(135deg, ${token.blue1} 0%, ${token.purple1} 100%)`,
+          padding: "32px 16px",
+        }}
+      >
+        <div style={{ maxWidth: "1024px", margin: "0 auto" }}>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+              <Flex justify="center" align="center" gap={12}>
+                <RocketOutlined
+                  style={{
+                    fontSize: 40,
+                    color: token.colorPrimary,
+                    background: `linear-gradient(45deg, ${token.colorPrimary}, ${token.purple6})`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                />
+                <Title
+                  level={1}
+                  style={{
+                    margin: 0,
+                    background: `linear-gradient(45deg, ${token.colorPrimary}, ${token.purple6})`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    backgroundClip: "text",
+                  }}
+                >
+                  AI Travel Advisor
+                </Title>
+              </Flex>
+
+              <Paragraph
+                style={{
+                  fontSize: 18,
+                  color: token.colorTextSecondary,
+                  margin: "auto",
+                  maxWidth: 600,
+                  lineHeight: 1.6,
+                }}
+              >
+                Your personal travel companion for planning amazing adventures
+                around the world
+              </Paragraph>
+            </Space>
           </div>
-          <p className="text-gray-600 text-lg">
-            Your personal travel companion for planning amazing adventures
-          </p>
-        </div>
 
-        {/* Chat Interface */}
-        <Card className="shadow-xl border-0">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg py-2">
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Chat with your Travel Advisor
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="p-0">
-            <ScrollArea className="h-[500px] p-6">
+          {/* Chat Interface */}
+          <Card
+            style={{
+              boxShadow: `0 20px 40px ${token.colorBgElevated}40`,
+              border: "none",
+              overflow: "hidden",
+            }}
+            title={
+              <Flex align="center" gap={12}>
+                <CompassOutlined style={{ fontSize: 20 }} />
+                <span>Chat with your Travel Advisor</span>
+              </Flex>
+            }
+            headStyle={{
+              background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.purple6} 100%)`,
+              color: "white",
+              padding: "16px 24px",
+              fontSize: 16,
+              fontWeight: 600,
+            }}
+            bodyStyle={{ padding: 0 }}
+          >
+            {/* Messages Area */}
+            <div
+              style={{
+                height: 500,
+                overflowY: "auto",
+                padding: 24,
+                background: token.colorBgContainer,
+              }}
+            >
               {messages.length === 0 ? (
-                <div className="text-center space-y-6">
-                  <div className="text-gray-500 mb-6">
-                    <Plane className="h-16 w-16 mx-auto mb-4 text-blue-300" />
-                    <p className="text-lg">
-                      Ready to plan your next adventure?
-                    </p>
-                    <p className="text-sm">
-                      Ask me anything about travel destinations, planning, or
-                      tips!
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700 mb-3">
-                      Try asking:
-                    </p>
-                    {suggestedQuestions.map((question, index) => (
-                      <Button
-                        key={index}
-                        variant="outline"
-                        className="w-full text-left justify-start h-auto p-3 text-sm bg-transparent"
-                        onClick={() => handleSuggestedQuestion(question)}
+                <div
+                  style={{
+                    textAlign: "center",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Space
+                    direction="vertical"
+                    size="large"
+                    style={{ width: "100%" }}
+                  >
+                    <div>
+                      {/* <RocketOutlined
+                        style={{
+                          fontSize: 80,
+                          color: token.blue3,
+                          marginBottom: 24,
+                          display: "block",
+                        }}
+                      /> */}
+                      <Title
+                        level={3}
+                        style={{
+                          color: token.colorTextSecondary,
+                          marginBottom: 8,
+                        }}
                       >
-                        {question}
-                      </Button>
-                    ))}
-                  </div>
+                        Ready to plan your next adventure?
+                      </Title>
+                      <Text type="secondary" style={{ fontSize: 16 }}>
+                        Ask me anything about travel destinations, planning, or
+                        tips!
+                      </Text>
+                    </div>
+
+                    <div style={{ maxWidth: 500, margin: "0 auto" }}>
+                      <Text
+                        strong
+                        style={{
+                          color: token.colorText,
+                          marginBottom: 16,
+                          display: "block",
+                          fontSize: 16,
+                        }}
+                      >
+                        ✨ Try asking:
+                      </Text>
+                      <Space
+                        direction="vertical"
+                        style={{ width: "100%" }}
+                        size="middle"
+                      >
+                        {suggestedQuestions.map((question, index) => (
+                          <Button
+                            key={index}
+                            type="default"
+                            size="large"
+                            block
+                            style={{
+                              textAlign: "left",
+                              height: "auto",
+                              padding: "16px 20px",
+                              whiteSpace: "normal",
+                              lineHeight: 1.5,
+                              border: `1px solid ${token.colorBorder}`,
+                              borderRadius: 12,
+                              transition: "all 0.3s ease",
+                            }}
+                            onClick={() => handleSuggestedQuestion(question)}
+                          >
+                            <EnvironmentOutlined
+                              style={{
+                                marginRight: 8,
+                                color: token.colorPrimary,
+                              }}
+                            />
+                            {question}
+                          </Button>
+                        ))}
+                      </Space>
+                    </div>
+                  </Space>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <Space
+                  direction="vertical"
+                  size="large"
+                  style={{ width: "100%" }}
+                >
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex gap-3 ${
-                        message.role === "user"
-                          ? "justify-end"
-                          : "justify-start"
-                      }`}
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        justifyContent:
+                          message.role === "user" ? "flex-end" : "flex-start",
+                        alignItems: "flex-start",
+                      }}
                     >
                       {message.role === "assistant" && (
-                        <Avatar className="h-8 w-8 bg-blue-600">
-                          <AvatarFallback className="text-white text-xs">
-                            <Plane className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
+                        <Avatar
+                          size={40}
+                          style={{
+                            backgroundColor: token.colorPrimary,
+                            flexShrink: 0,
+                            boxShadow: `0 4px 12px ${token.colorPrimary}30`,
+                          }}
+                          icon={<RocketOutlined />}
+                        />
                       )}
 
                       <div
-                        className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                          message.role === "user"
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
+                        style={{
+                          maxWidth: "75%",
+                          padding: "16px 20px",
+                          borderRadius: 16,
+                          backgroundColor:
+                            message.role === "user"
+                              ? token.colorPrimary
+                              : token.colorBgElevated,
+                          color:
+                            message.role === "user" ? "white" : token.colorText,
+                          boxShadow:
+                            message.role === "user"
+                              ? `0 4px 12px ${token.colorPrimary}30`
+                              : `0 2px 8px ${token.colorBgElevated}60`,
+                          position: "relative",
+                        }}
                       >
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        <Text
+                          style={{
+                            color:
+                              message.role === "user"
+                                ? "white"
+                                : token.colorText,
+                            whiteSpace: "pre-wrap",
+                            lineHeight: 1.6,
+                            fontSize: 15,
+                          }}
+                        >
                           {message.content}
-                        </p>
+                        </Text>
                       </div>
 
                       {message.role === "user" && (
-                        <Avatar className="h-8 w-8 bg-gray-600">
-                          <AvatarFallback className="text-white text-xs">
-                            You
-                          </AvatarFallback>
-                        </Avatar>
+                        <Avatar
+                          size={40}
+                          style={{
+                            backgroundColor: token.colorTextSecondary,
+                            flexShrink: 0,
+                            boxShadow: `0 4px 12px ${token.colorTextSecondary}30`,
+                          }}
+                          icon={<UserOutlined />}
+                        />
                       )}
                     </div>
                   ))}
 
                   {isLoading && (
-                    <div className="flex gap-3 justify-start">
-                      <Avatar className="h-8 w-8 bg-blue-600">
-                        <AvatarFallback className="text-white text-xs">
-                          <Plane className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="bg-gray-100 rounded-lg px-4 py-2">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="text-sm">
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        justifyContent: "flex-start",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <Avatar
+                        size={40}
+                        style={{
+                          backgroundColor: token.colorPrimary,
+                          flexShrink: 0,
+                          boxShadow: `0 4px 12px ${token.colorPrimary}30`,
+                        }}
+                        icon={<RocketOutlined />}
+                      />
+                      <div
+                        style={{
+                          padding: "16px 20px",
+                          borderRadius: 16,
+                          backgroundColor: token.colorBgElevated,
+                          boxShadow: `0 2px 8px ${token.colorBgElevated}60`,
+                        }}
+                      >
+                        <Flex align="center" gap={12}>
+                          <Spin
+                            indicator={
+                              <LoadingOutlined
+                                style={{
+                                  fontSize: 18,
+                                  color: token.colorPrimary,
+                                }}
+                              />
+                            }
+                          />
+                          <Text
+                            style={{
+                              color: token.colorTextSecondary,
+                              fontSize: 15,
+                            }}
+                          >
                             Planning your adventure...
-                          </span>
-                        </div>
+                          </Text>
+                        </Flex>
                       </div>
                     </div>
                   )}
-                </div>
+                </Space>
               )}
-            </ScrollArea>
+            </div>
 
             {/* Input Form */}
-            <div className="border-t bg-gray-50 p-4">
-              <form onSubmit={handleSubmit} className="flex gap-2">
-                <Input
-                  name="prompt"
-                  value={input}
-                  onChange={handleInputChange}
-                  placeholder="Ask about destinations, travel tips, planning advice..."
-                  className="flex-1"
-                  disabled={isLoading}
-                />
-                <Button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </form>
+            <div
+              style={{
+                borderTop: `1px solid ${token.colorBorderSecondary}`,
+                backgroundColor: token.colorBgLayout,
+                padding: 20,
+              }}
+            >
+              <div onSubmit={handleSubmit}>
+                <Flex gap={12}>
+                  <Input
+                    name="prompt"
+                    value={input}
+                    onChange={handleInputChange}
+                    placeholder="Ask about destinations, travel tips, planning advice..."
+                    disabled={isLoading}
+                    className="py-2 px-4"
+                    size="large"
+                    onPressEnter={(e) => {
+                      e.preventDefault();
+                      if (!isLoading && input.trim()) {
+                        handleSubmit(e);
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      fontSize: 18,
+                    }}
+                    suffix={
+                      <EnvironmentOutlined
+                        style={{
+                          color: token.colorTextTertiary,
+                          fontSize: 16,
+                        }}
+                      />
+                    }
+                  />
+                  <Button
+                    type="primary"
+                    disabled={isLoading || !input.trim()}
+                    size="large"
+                    loading={isLoading}
+                    icon={!isLoading && <SendOutlined />}
+                    onClick={(e) => {
+                      if (!isLoading && input.trim()) {
+                        handleSubmit(e);
+                      }
+                    }}
+                    style={{
+                      borderRadius: 12,
+                      minWidth: 60,
+                      height: 40,
+                      background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.purple6} 100%)`,
+                      border: "none",
+                      boxShadow: `0 4px 12px ${token.colorPrimary}30`,
+                    }}
+                  />
+                </Flex>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
 
-        {/* Footer */}
-        <div className="text-center mt-8 text-gray-500 text-sm">
-          <p>
-            Powered by AI • Get personalized travel advice and recommendations
-          </p>
+          {/* Footer */}
+          <div style={{ textAlign: "center", marginTop: 32 }}>
+            <Text
+              type="secondary"
+              style={{
+                fontSize: 14,
+                opacity: 0.8,
+              }}
+            >
+              🤖 Powered by AI • Get personalized travel advice and
+              recommendations ✈️
+            </Text>
+          </div>
         </div>
       </div>
-    </div>
+    </ConfigProvider>
   );
 }
