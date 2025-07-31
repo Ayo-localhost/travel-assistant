@@ -28,21 +28,17 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files first for better caching
-COPY client/package*.json ./
+COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production=false
+RUN npm install
 
 # Copy TypeScript config files
-COPY client/tsconfig*.json ./
-COPY client/vite.config.ts ./
+COPY tsconfig*.json ./
+COPY vite.config.ts ./
 
 # Copy source code
-COPY client/. .
-
-# Add this after COPY . .
-RUN ls -la src/lib/
-RUN cat tsconfig.app.json
+COPY . .
 
 # Build the app
 RUN npm run build
