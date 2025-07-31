@@ -9,12 +9,9 @@ steps:
 
   - id: build-image
     name: "gcr.io/cloud-builders/docker"
-    entrypoint: bash
     args:
-      [
-        "-c",
-        "docker build -t eu.gcr.io/$PROJECT_ID/${_IMAGE_NAME}:$SHORT_SHA ./client . ",
-      ]
+      ["build", "-t", "eu.gcr.io/$PROJECT_ID/${_IMAGE_NAME}:$SHORT_SHA", "."]
+    dir: "client"
 
   - id: push-image
     name: "gcr.io/cloud-builders/docker"

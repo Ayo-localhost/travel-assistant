@@ -10,8 +10,10 @@ import os
 import json
 import tempfile
 import uuid
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 logging.basicConfig(level=logging.INFO)
 
 # Dialogflow CX Configuration
