@@ -7,21 +7,10 @@ steps:
       - |
         echo "VITE_API_URL=$_VITE_API_URL" >> ./client/.env
 
-  # - id: build-image
-  #   name: "gcr.io/cloud-builders/docker"
-  #   entrypoint: bash
-  #   args:
-  #     [
-  #       "-c",
-  #       "docker build -t eu.gcr.io/$PROJECT_ID/${_IMAGE_NAME}:$SHORT_SHA ./client ./ ",
-  #     ]
   - id: build-image
     name: "gcr.io/cloud-builders/docker"
     args:
-      - "build"
-      - "-t"
-      - "eu.gcr.io/$PROJECT_ID/${_IMAGE_NAME}:$SHORT_SHA"
-      - "."
+      ["build", "-t", "eu.gcr.io/$PROJECT_ID/${_IMAGE_NAME}:$SHORT_SHA", "."]
 
   - id: push-image
     name: "gcr.io/cloud-builders/docker"
