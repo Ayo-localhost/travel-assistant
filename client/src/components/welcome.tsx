@@ -18,7 +18,7 @@ import {
   CompassOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { useTravelChat } from "@/lib/useTravelChat";
+import { useTravelChat } from "../lib/useTravelChat";
 
 const { Title, Paragraph, Text } = Typography;
 
