@@ -444,6 +444,91 @@
           "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/gender_types"
         }
       ]
+    },
+    {
+      "displayName": "trip.planning",
+      "trainingPhrases": [
+        {
+          "parts": [
+            {
+              "text": "Plan my trip"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Plan my trip to Lagos"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Help me plan my trip"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "I want to plan a trip to Lagos"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Plan a trip for me"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "I'm planning a trip to Lagos"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Help me plan my Lagos trip"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "I need help planning my trip"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Plan my vacation"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "I'm visiting Lagos"
+            }
+          ]
+        }
+      ],
+      "parameters": [
+        {
+          "id": "area",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/lagos_areas"
+        },
+        {
+          "id": "date_period",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/date_periods"
+        }
+      ]
     }
   ],
   "entityTypes": [

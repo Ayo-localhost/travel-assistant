@@ -588,7 +588,7 @@ def format_accommodation_response(accommodations, filters=None):
         
         response_text += f"⭐ {accommodation.get('rating', 'N/A')}/5.0\n\n"
     
-    response_text += "Want to filter by area, budget, or accommodation type? 🔍"
+    response_text += "Want to filter by area? 🔍"
     
     return response_text
 
@@ -615,7 +615,7 @@ def format_outfit_response(outfits, event_type):
         
         response_text += f"🔸 Vibe: {outfit.get('vibe', 'Amazing')}\n\n"
     
-    response_text += "Want to see couple's fits, shop these looks, or try a different style? 💑🛍️"
+    response_text += "Want to see unisex fits, or filter by event type? 💑🛍️"
     
     return response_text
 
@@ -793,13 +793,64 @@ def webhook():
             outfits = data_store.get_outfit_suggestions(event_type, gender)
             response_text = format_outfit_response(outfits, event_type)
             
+        elif 'trip' in intent_name.lower():
+            # Handle trip planning - provide comprehensive trip information
+            logging.info("Handling trip planning request")
+            
+            # Extract area parameter if specified
+            area_param = extract_parameter_value(parameters, 'area', ['location', 'place'])
+            
+            # Get events (default to current year if no specific date)
+            event_filters = {'query_text': query_text}
+            if area_param:
+                event_filters['area'] = str(area_param)
+            
+            events = data_store.get_events(event_filters)
+            events_response = format_events_response(events, event_filters)
+            
+            # Get accommodations
+            acc_filters = {}
+            if area_param:
+                acc_filters['area'] = str(area_param)
+            
+            accommodations = data_store.get_accommodations(acc_filters)
+            acc_response = format_accommodation_response(accommodations, acc_filters)
+            
+            # Get outfit suggestions (default to concert)
+            outfits = data_store.get_outfit_suggestions('concert')
+            outfit_response = format_outfit_response(outfits, 'concert')
+            
+            # Combine all responses
+            response_text = f"🌟 **Your Lagos Trip Plan** 🌟\n\n"
+            
+            if area_param:
+                response_text += f"📍 **Focusing on {area_param.title()}**\n\n"
+            
+            response_text += "🎉 **TOP EVENTS**\n"
+            response_text += events_response + "\n\n"
+            
+            response_text += "🏨 **WHERE TO STAY**\n"
+            response_text += acc_response + "\n\n"
+            
+            response_text += "👗 **STYLE INSPIRATION**\n"
+            response_text += outfit_response + "\n\n"
+            
+            response_text += "💡 **Trip Planning Tips:**\n"
+            response_text += "• Book accommodations early, especially during peak seasons\n"
+            response_text += "• Check event dates and book tickets in advance\n"
+            response_text += "• Consider the weather when packing outfits\n"
+            response_text += "• Explore different areas of Lagos for the full experience\n\n"
+            
+            response_text += "Need specific recommendations? Ask me about events in a particular area, budget-friendly stays, or outfit suggestions for specific events! 🎯"
+            
         else:
             # Default/fallback response
             response_text = ("Hey there! 🌟 I'm your Lagos travel companion! I can help you find:\n\n"
                            "🔥 Events happening this week, month, or any specific time\n"
                            "🏠 Places to stay in any area of Lagos\n"
-                           "👗 Outfit suggestions for any event\n\n"
-                           "Try asking: 'What events are in October?' or 'Show me hotels in Lekki under 30000'")
+                           "👗 Outfit suggestions for any event\n"
+                           "🌟 Complete trip planning with all categories\n\n"
+                           "Try asking: 'Plan my trip to Lagos' or 'What events are in October?' or 'Show me hotels in Lekki'")
         
         return jsonify({
             'fulfillmentResponse': {
@@ -1101,6 +1152,28 @@ def test_dialogflow_cx():
                         }
                     },
                     'text': 'Beach party outfits for women'
+                }
+            },
+            {
+                'name': 'trip_planning_general',
+                'request': {
+                    'intentInfo': {'displayName': 'trip.planning'},
+                    'sessionInfo': {
+                        'parameters': {}
+                    },
+                    'text': 'Plan my trip to Lagos'
+                }
+            },
+            {
+                'name': 'trip_planning_with_area',
+                'request': {
+                    'intentInfo': {'displayName': 'trip.planning'},
+                    'sessionInfo': {
+                        'parameters': {
+                            'area': {'value': 'lekki'}
+                        }
+                    },
+                    'text': 'Plan my trip to Lekki'
                 }
             }
         ]
