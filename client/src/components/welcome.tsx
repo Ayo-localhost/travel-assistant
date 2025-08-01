@@ -21,7 +21,7 @@ import {
 } from "@ant-design/icons";
 import { useTravelChat } from "./usetravelchat";
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
 
 export default function TravelAdvisor() {
   const { token } = theme.useToken();
@@ -51,10 +51,10 @@ export default function TravelAdvisor() {
   };
 
   const suggestedQuestions = [
-    "Plan a 7-day trip to Lagos for first-time visitors",
-    "Best budget destinations in Africa for summer",
-    "What should I pack for a trip to Lagos?",
-    "Recommend romantic getaways in Nigeria",
+    "🔥 Events happening in December",
+    "🏠 Where to stay in Lagos",
+    "🧳 Help me plan my trip",
+    "👗 Outfit suggestions",
   ];
 
   const handleSuggestedQuestion = (question) => {
@@ -113,21 +113,9 @@ export default function TravelAdvisor() {
                     backgroundClip: "text",
                   }}
                 >
-                  AI Travel Advisor
+                  Yinka
                 </Title>
               </Flex>
-              <Paragraph
-                style={{
-                  fontSize: 18,
-                  color: token.colorTextSecondary,
-                  margin: "auto",
-                  maxWidth: 600,
-                  lineHeight: 1.6,
-                }}
-              >
-                Your personal travel companion for planning amazing adventures
-                around the world
-              </Paragraph>
             </Space>
           </div>
 
@@ -193,18 +181,18 @@ export default function TravelAdvisor() {
                     style={{ width: "100%" }}
                   >
                     <div>
-                      <Title
-                        level={3}
+                      <Text
+                        type="secondary"
                         style={{
-                          color: token.colorTextSecondary,
-                          marginBottom: 8,
+                          fontSize: 16,
+                          maxWidth: 100,
+                          margin: "0 auto",
                         }}
                       >
-                        Ready to plan your next adventure?
-                      </Title>
-                      <Text type="secondary" style={{ fontSize: 16 }}>
-                        Ask me anything about travel destinations, planning, or
-                        tips!
+                        Hey there! 🎉 Ready to Detty this December in Lagos? I
+                        am Yinka and I can help you plan your trip, find events,
+                        comfy places to stay, or outfit inspo. What would you
+                        like to explore
                       </Text>
                     </div>
                     <div style={{ maxWidth: 500, margin: "0 auto" }}>
