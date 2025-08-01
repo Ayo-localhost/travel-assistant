@@ -127,10 +127,11 @@ class DateRangeParser:
             tomorrow = current_date + timedelta(days=1)
             return tomorrow, tomorrow
         
-        # Default to current week if no specific date found
-        logging.info("No specific date pattern found, defaulting to current week")
-        week_end = current_date + timedelta(days=7)
-        return current_date, week_end
+        # Default to current year if no specific date found
+        logging.info("No specific date pattern found, defaulting to current year")
+        year_start = current_date.replace(month=1, day=1)
+        year_end = current_date.replace(month=12, day=31)
+        return year_start, year_end
 
 
 class GoogleSheetsDataStore:
