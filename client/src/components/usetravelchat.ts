@@ -8,8 +8,6 @@ export function useTravelChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId] = useState(uuidv4());
 
-  console.log({ messages });
-
   const handleInputChange = (e) => {
     setInput(e.target.value);
   };
@@ -29,13 +27,35 @@ export function useTravelChat() {
         session_id: sessionId,
       });
 
-      const assistantMessage = response.data.response;
+      console.log("Response from server:", response.data);
 
-      // Add assistant message using functional update
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { id: uuidv4(), role: "assistant", content: assistantMessage },
-      ]);
+      if (!response.data?.intent) {
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            id: uuidv4(),
+            role: "assistant",
+            content: `🤔 Hmm, I’m still learning how to help with that!
+
+              Here are some things you can ask me:
+              • 🔥 Events happening in Lagos
+              • 🏠 Where to stay
+              • 🧳 Help me plan my trip
+              • 👗 Outfit suggestions
+              • ❓ Ask me anything about travel
+
+              What would you like to explore next?`,
+          },
+        ]);
+      } else {
+        const assistantMessage = response.data.response;
+
+        // Add assistant message using functional update
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { id: uuidv4(), role: "assistant", content: assistantMessage },
+        ]);
+      }
     } catch (error) {
       setMessages((prevMessages) => [
         ...prevMessages,
