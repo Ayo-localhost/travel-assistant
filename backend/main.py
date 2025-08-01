@@ -483,6 +483,37 @@ class GoogleSheetsDataStore:
 data_store = GoogleSheetsDataStore()
 
 
+def extract_parameter_value(parameters, param_name, fallback_names=None):
+    """Extract parameter value from Dialogflow CX webhook request"""
+    if not parameters or not isinstance(parameters, dict):
+        return None
+    
+    # Try exact match first
+    if param_name in parameters:
+        value = parameters[param_name]
+        if isinstance(value, dict) and 'value' in value:
+            return value['value']
+        return value
+    
+    # Try fallback names
+    if fallback_names:
+        for fallback_name in fallback_names:
+            if fallback_name in parameters:
+                value = parameters[fallback_name]
+                if isinstance(value, dict) and 'value' in value:
+                    return value['value']
+                return value
+    
+    # Try partial matches
+    for key, value in parameters.items():
+        if param_name.lower() in key.lower() and value:
+            if isinstance(value, dict) and 'value' in value:
+                return value['value']
+            return value
+    
+    return None
+
+
 def format_events_response(events, filters=None):
     """Format events data for Dialogflow response"""
     if not events:
@@ -636,28 +667,52 @@ def webhook():
         parameters = req.get('sessionInfo', {}).get('parameters', {})
         query_text = req.get('text', '')  # Original user query for date parsing
         
-        # Try alternative parameter extraction paths
+        # Try alternative parameter extraction paths for Dialogflow CX
         if not parameters:
             parameters = req.get('fulfillmentInfo', {}).get('parameters', {})
         if not parameters:
             parameters = req.get('parameters', {})
+        
+        # For Dialogflow CX, parameters might be nested differently
+        if not parameters and 'sessionInfo' in req:
+            session_info = req['sessionInfo']
+            if 'parameterInfo' in session_info:
+                parameters = session_info['parameterInfo']
+            elif 'parameters' in session_info:
+                parameters = session_info['parameters']
+        
+        # Also check for parameters in the main request body
+        if not parameters and 'parameters' in req:
+            parameters = req['parameters']
         
         logging.info(f"Webhook called with intent: {intent_name}")
         logging.info(f"Parameters: {parameters}")
         logging.info(f"Query text: {query_text}")
         logging.info(f"Full request structure: {json.dumps(req, indent=2)}")
         
+        # Additional debugging for parameter extraction
+        if parameters:
+            logging.info(f"Parameter keys: {list(parameters.keys())}")
+            for key, value in parameters.items():
+                logging.info(f"Parameter '{key}': {value} (type: {type(value)})")
+        else:
+            logging.warning("No parameters found in request")
+        
         if 'events' in intent_name.lower():
             # Handle events inquiry
             filters = {'query_text': query_text}  # Include original query for date parsing
             
-            if 'area' in parameters and parameters['area']:
-                filters['area'] = parameters['area']
-                logging.info(f"Applied area filter: {parameters['area']}")
+            # Extract area parameter
+            area_param = extract_parameter_value(parameters, 'area', ['location', 'place'])
+            if area_param:
+                filters['area'] = str(area_param)
+                logging.info(f"Applied area filter: {filters['area']}")
             
-            if 'event_type' in parameters and parameters['event_type']:
-                filters['event_type'] = parameters['event_type']
-                logging.info(f"Applied event type filter: {parameters['event_type']}")
+            # Extract event_type parameter
+            event_type_param = extract_parameter_value(parameters, 'event_type', ['type', 'event_type'])
+            if event_type_param:
+                filters['event_type'] = str(event_type_param)
+                logging.info(f"Applied event type filter: {filters['event_type']}")
             
             events = data_store.get_events(filters)
             response_text = format_events_response(events, filters)
@@ -666,28 +721,37 @@ def webhook():
             # Handle accommodation inquiry
             filters = {}
             
-            if 'area' in parameters and parameters['area']:
-                filters['area'] = parameters['area']
-                logging.info(f"Applied area filter: {parameters['area']}")
+            # Extract area parameter
+            area_param = extract_parameter_value(parameters, 'area', ['location', 'place'])
+            if area_param:
+                filters['area'] = str(area_param)
+                logging.info(f"Applied area filter: {filters['area']}")
             
-            if 'max_budget' in parameters and parameters['max_budget']:
+            # Extract max_budget parameter
+            budget_param = extract_parameter_value(parameters, 'max_budget', ['budget', 'price', 'cost', 'amount'])
+            if budget_param:
                 try:
-                    filters['max_budget'] = float(parameters['max_budget'])
-                    logging.info(f"Applied budget filter: {parameters['max_budget']}")
+                    filters['max_budget'] = float(budget_param)
+                    logging.info(f"Applied budget filter: {filters['max_budget']}")
                 except (ValueError, TypeError):
-                    logging.warning(f"Invalid budget value: {parameters['max_budget']}")
+                    logging.warning(f"Invalid budget value: {budget_param}")
             
-            if 'accommodation_type' in parameters and parameters['accommodation_type']:
-                filters['accommodation_type'] = parameters['accommodation_type']
-                logging.info(f"Applied accommodation type filter: {parameters['accommodation_type']}")
+            # Extract accommodation_type parameter
+            acc_type_param = extract_parameter_value(parameters, 'accommodation_type', ['type', 'accommodation_type'])
+            if acc_type_param:
+                filters['accommodation_type'] = str(acc_type_param)
+                logging.info(f"Applied accommodation type filter: {filters['accommodation_type']}")
             
             accommodations = data_store.get_accommodations(filters)
             response_text = format_accommodation_response(accommodations, filters)
             
         elif 'outfit' in intent_name.lower():
             # Handle outfit suggestions
-            event_type = parameters.get('event_type')
-            gender = parameters.get('gender')
+            # Extract event_type parameter
+            event_type = extract_parameter_value(parameters, 'event_type', ['type', 'event_type'])
+            
+            # Extract gender parameter
+            gender = extract_parameter_value(parameters, 'gender', ['gender_type'])
             
             # If no event_type provided, try to get from query context or use a default
             if not event_type:
@@ -969,6 +1033,84 @@ def test_parameters():
             'query_text': query_text,
             'full_request': data
         })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/test-dialogflow-cx', methods=['POST'])
+def test_dialogflow_cx():
+    """Test endpoint to simulate Dialogflow CX webhook format"""
+    try:
+        # Simulate Dialogflow CX webhook requests
+        test_cases = [
+            {
+                'name': 'events_with_area',
+                'request': {
+                    'intentInfo': {'displayName': 'events.inquiry'},
+                    'sessionInfo': {
+                        'parameters': {
+                            'area': {'value': 'lekki'},
+                            'event_type': {'value': 'concert'}
+                        }
+                    },
+                    'text': 'Events in Lekki'
+                }
+            },
+            {
+                'name': 'accommodation_with_budget',
+                'request': {
+                    'intentInfo': {'displayName': 'accommodation.inquiry'},
+                    'sessionInfo': {
+                        'parameters': {
+                            'area': {'value': 'victoria_island'},
+                            'max_budget': {'value': '50000'}
+                        }
+                    },
+                    'text': 'Hotels in Victoria Island under 50000'
+                }
+            },
+            {
+                'name': 'outfit_with_event_type',
+                'request': {
+                    'intentInfo': {'displayName': 'outfit.suggestions'},
+                    'sessionInfo': {
+                        'parameters': {
+                            'event_type': {'value': 'beach_party'},
+                            'gender': {'value': 'female'}
+                        }
+                    },
+                    'text': 'Beach party outfits for women'
+                }
+            }
+        ]
+        
+        results = {}
+        for test_case in test_cases:
+            # Temporarily replace the request data
+            original_req = request.get_json()
+            request._cached_json = test_case['request']
+            
+            try:
+                # Call the webhook function
+                response = webhook()
+                results[test_case['name']] = {
+                    'status': 'success',
+                    'response': response.get_json()
+                }
+            except Exception as e:
+                results[test_case['name']] = {
+                    'status': 'error',
+                    'error': str(e)
+                }
+            finally:
+                # Restore original request
+                request._cached_json = original_req
+        
+        return jsonify(results)
         
     except Exception as e:
         return jsonify({

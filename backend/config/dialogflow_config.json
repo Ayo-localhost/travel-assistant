@@ -618,7 +618,7 @@
     {
       "displayName": "main-webhook",
       "genericWebService": {
-        "uri": "https://your-domain.com/webhook",
+        "uri": "https://travel-assistant-390383760878.europe-west1.run.app/webhook",
         "httpMethod": "POST",
         "requestHeaders": {
           "Content-Type": "application/json"
