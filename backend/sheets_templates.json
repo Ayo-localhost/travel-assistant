@@ -78,13 +78,7 @@
             "https://example.com/detty-poster.jpg"
           ]
         ]
-      }
-    ]
-  },
-  
-  "accommodations_sheet_template": {
-    "sheet_name": "Lagos Accommodations Database",
-    "worksheets": [
+      },
       {
         "name": "Accommodations",
         "headers": [
@@ -167,13 +161,7 @@
             "available"
           ]
         ]
-      }
-    ]
-  },
-
-  "outfits_sheet_template": {
-    "sheet_name": "Lagos Outfit Guide",
-    "worksheets": [
+      },
       {
         "name": "Outfits",
         "headers": [

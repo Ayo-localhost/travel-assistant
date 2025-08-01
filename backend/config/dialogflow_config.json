@@ -1,7 +1,7 @@
 {
-  "displayName": "Lagos Travel Guide - Basic",
+  "displayName": "Lagos Travel Guide - Enhanced",
   "defaultLanguageCode": "en",
-  "description": "Basic conversational AI travel guide for Lagos State",
+  "description": "Enhanced conversational AI travel guide for Lagos State with better filtering",
   "timeZone": "Africa/Lagos",
   "enableStackdriverLogging": true,
   "enableSpellCheck": true,
@@ -34,16 +34,19 @@
                         "type": "chips",
                         "options": [
                           {
-                            "text": "🔥 What's happening this week?"
+                            "text": "🔥 Events this week"
                           },
                           {
-                            "text": "🏠 Where should I stay?"
+                            "text": "📅 Events in October"
                           },
                           {
-                            "text": "👗 What should I wear?"
+                            "text": "🏠 Hotels in Lekki"
                           },
                           {
-                            "text": "❓ Help me with Lagos"
+                            "text": "👗 Concert outfits"
+                          },
+                          {
+                            "text": "❓ Help me explore Lagos"
                           }
                         ]
                       }
@@ -125,14 +128,22 @@
         {
           "parts": [
             {
-              "text": "Concert this week"
+              "text": "Events in "
+            },
+            {
+              "parameterValue": "@date_periods",
+              "text": "October"
             }
           ]
         },
         {
           "parts": [
             {
-              "text": "Beach party events"
+              "text": "What events are in "
+            },
+            {
+              "parameterValue": "@date_periods",
+              "text": "December"
             }
           ]
         },
@@ -153,6 +164,57 @@
               "text": "Lekki"
             }
           ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Beach parties in "
+            },
+            {
+              "parameterValue": "@lagos_areas",
+              "text": "Victoria Island"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "What's happening "
+            },
+            {
+              "parameterValue": "@date_periods",
+              "text": "this weekend"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Events "
+            },
+            {
+              "parameterValue": "@date_periods",
+              "text": "next week"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Show me "
+            },
+            {
+              "parameterValue": "@event_types",
+              "text": "club nights"
+            },
+            {
+              "text": " "
+            },
+            {
+              "parameterValue": "@date_periods",
+              "text": "this month"
+            }
+          ]
         }
       ],
       "parameters": [
@@ -163,6 +225,10 @@
         {
           "id": "area",
           "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/lagos_areas"
+        },
+        {
+          "id": "date_period",
+          "entityType": "projects/PROJECT_ID/locations/global/agents/AGENT_ID/entityTypes/date_periods"
         }
       ]
     },
@@ -193,14 +259,11 @@
         {
           "parts": [
             {
-              "text": "Accommodation options"
-            }
-          ]
-        },
-        {
-          "parts": [
+              "text": "Hotels in "
+            },
             {
-              "text": "Places to stay"
+              "parameterValue": "@lagos_areas",
+              "text": "Lekki"
             }
           ]
         },
@@ -230,6 +293,42 @@
             {
               "parameterValue": "@sys.number",
               "text": "30000"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Show me "
+            },
+            {
+              "parameterValue": "@accommodation_types",
+              "text": "shortlets"
+            },
+            {
+              "text": " in "
+            },
+            {
+              "parameterValue": "@lagos_areas",
+              "text": "Ikoyi"
+            },
+            {
+              "text": " under "
+            },
+            {
+              "parameterValue": "@sys.number",
+              "text": "25000"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Affordable places in "
+            },
+            {
+              "parameterValue": "@lagos_areas",
+              "text": "Ikeja"
             }
           ]
         }
@@ -269,21 +368,7 @@
         {
           "parts": [
             {
-              "text": "What to wear to"
-            }
-          ]
-        },
-        {
-          "parts": [
-            {
-              "text": "Dress code for"
-            }
-          ]
-        },
-        {
-          "parts": [
-            {
-              "text": "What should I wear to a "
+              "text": "What to wear to a "
             },
             {
               "parameterValue": "@event_types",
@@ -308,6 +393,45 @@
               "text": "concerts"
             }
           ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Concert outfits"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Beach party looks"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "Club night outfits"
+            }
+          ]
+        },
+        {
+          "parts": [
+            {
+              "text": "What should a "
+            },
+            {
+              "parameterValue": "@gender_types",
+              "text": "guy"
+            },
+            {
+              "text": " wear to "
+            },
+            {
+              "parameterValue": "@event_types",
+              "text": "brunch"
+            }
+          ]
         }
       ],
       "parameters": [
@@ -329,23 +453,23 @@
       "entities": [
         {
           "value": "victoria_island",
-          "synonyms": ["VI", "Victoria Island", "Island", "vic island", "victoria island"]
+          "synonyms": ["VI", "Victoria Island", "Island", "vic island", "victoria island", "Victoria", "vi"]
         },
         {
           "value": "lekki",
-          "synonyms": ["Lekki", "Lekki Phase 1", "Phase 1", "Admiralty", "lekki"]
+          "synonyms": ["Lekki", "Lekki Phase 1", "Phase 1", "Admiralty", "lekki", "lekki phase", "phase1"]
         },
         {
           "value": "ikeja",
-          "synonyms": ["Ikeja", "Mainland", "GRA", "ikeja"]
+          "synonyms": ["Ikeja", "Mainland", "GRA", "ikeja", "ikeja gra"]
         },
         {
           "value": "ikoyi",
-          "synonyms": ["Ikoyi", "Old Ikoyi", "Banana Island", "ikoyi"]
+          "synonyms": ["Ikoyi", "Old Ikoyi", "Banana Island", "ikoyi", "banana island"]
         },
         {
           "value": "surulere",
-          "synonyms": ["Surulere", "Suru", "National Theatre area", "surulere"]
+          "synonyms": ["Surulere", "Suru", "National Theatre area", "surulere", "national theatre"]
         }
       ]
     },
@@ -355,23 +479,23 @@
       "entities": [
         {
           "value": "concert",
-          "synonyms": ["concert", "music show", "live music", "performance", "concerts"]
+          "synonyms": ["concert", "music show", "live music", "performance", "concerts", "music concert", "show"]
         },
         {
           "value": "beach_party",
-          "synonyms": ["beach party", "beach event", "beach vibes", "pool party", "beach parties"]
+          "synonyms": ["beach party", "beach event", "beach vibes", "pool party", "beach parties", "beach", "pool"]
         },
         {
           "value": "brunch",
-          "synonyms": ["brunch", "day party", "afternoon event", "sunday funday"]
+          "synonyms": ["brunch", "day party", "afternoon event", "sunday funday", "brunch party"]
         },
         {
           "value": "club_night",
-          "synonyms": ["club night", "turn up", "party", "nightlife", "club"]
+          "synonyms": ["club night", "turn up", "party", "nightlife", "club", "nightclub", "clubbing"]
         },
         {
           "value": "detty_december",
-          "synonyms": ["detty december", "december party", "festive event", "year end party"]
+          "synonyms": ["detty december", "december party", "festive event", "year end party", "detty", "december fest"]
         }
       ]
     },
@@ -381,15 +505,15 @@
       "entities": [
         {
           "value": "hotel",
-          "synonyms": ["hotel", "resort", "luxury hotel", "hotels"]
+          "synonyms": ["hotel", "resort", "luxury hotel", "hotels", "inn"]
         },
         {
           "value": "shortlet",
-          "synonyms": ["shortlet", "apartment", "airbnb", "short stay", "shortlets"]
+          "synonyms": ["shortlet", "apartment", "airbnb", "short stay", "shortlets", "flat", "serviced apartment"]
         },
         {
           "value": "guesthouse",
-          "synonyms": ["guesthouse", "guest house", "lodge", "guesthouses"]
+          "synonyms": ["guesthouse", "guest house", "lodge", "guesthouses", "bnb"]
         }
       ]
     },
@@ -399,15 +523,93 @@
       "entities": [
         {
           "value": "male",
-          "synonyms": ["male", "men", "guys", "men's", "masculine"]
+          "synonyms": ["male", "men", "guys", "men's", "masculine", "guy", "man"]
         },
         {
           "value": "female",
-          "synonyms": ["female", "women", "ladies", "women's", "feminine"]
+          "synonyms": ["female", "women", "ladies", "women's", "feminine", "lady", "woman", "girl"]
         },
         {
           "value": "unisex",
-          "synonyms": ["unisex", "both", "all", "everyone"]
+          "synonyms": ["unisex", "both", "all", "everyone", "anyone"]
+        }
+      ]
+    },
+    {
+      "displayName": "date_periods",
+      "kind": "KIND_MAP",
+      "entities": [
+        {
+          "value": "this_week",
+          "synonyms": ["this week", "current week", "week", "this_week"]
+        },
+        {
+          "value": "next_week",
+          "synonyms": ["next week", "next_week", "coming week"]
+        },
+        {
+          "value": "this_weekend",
+          "synonyms": ["this weekend", "weekend", "this_weekend", "the weekend"]
+        },
+        {
+          "value": "this_month",
+          "synonyms": ["this month", "current month", "this_month", "month"]
+        },
+        {
+          "value": "january",
+          "synonyms": ["January", "Jan", "january", "jan"]
+        },
+        {
+          "value": "february",
+          "synonyms": ["February", "Feb", "february", "feb"]
+        },
+        {
+          "value": "march",
+          "synonyms": ["March", "Mar", "march", "mar"]
+        },
+        {
+          "value": "april",
+          "synonyms": ["April", "Apr", "april", "apr"]
+        },
+        {
+          "value": "may",
+          "synonyms": ["May", "may"]
+        },
+        {
+          "value": "june",
+          "synonyms": ["June", "Jun", "june", "jun"]
+        },
+        {
+          "value": "july",
+          "synonyms": ["July", "Jul", "july", "jul"]
+        },
+        {
+          "value": "august",
+          "synonyms": ["August", "Aug", "august", "aug"]
+        },
+        {
+          "value": "september",
+          "synonyms": ["September", "Sep", "Sept", "september", "sep", "sept"]
+        },
+        {
+          "value": "october",
+          "synonyms": ["October", "Oct", "october", "oct"]
+        },
+        {
+          "value": "november",
+          "synonyms": ["November", "Nov", "november", "nov"]
+        },
+        {
+          "value": "december",
+          "synonyms": ["December", "Dec", "december", "dec"]
+        },
+        {
+          "value": "today",
+          "synonyms": ["today", "tonight", "this evening"]
+        },
+        {
+          "value": "tomorrow",
+          "synonyms": ["tomorrow", "tmr", "tom"]
         }
       ]
     }
@@ -416,7 +618,7 @@
     {
       "displayName": "main-webhook",
       "genericWebService": {
-        "uri": "https://your-domain.com/webhook",
+        "uri": "https://travel-assistant-390383760878.europe-west1.run.app/webhook",
         "httpMethod": "POST",
         "requestHeaders": {
           "Content-Type": "application/json"
