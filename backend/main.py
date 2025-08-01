@@ -322,6 +322,10 @@ class GoogleSheetsDataStore:
             start_date, end_date = DateRangeParser.parse_date_query(filters['query_text'])
         
         logging.info(f"Filtering events with date range: {start_date} to {end_date}")
+        logging.info(f"Applied filters: {filters}")
+        
+        # If no date range is specified, we want to return the first 5 events sorted by date
+        # This means we don't apply any date filtering, just return the earliest events
         
         for event in events:
             try:
@@ -332,15 +336,18 @@ class GoogleSheetsDataStore:
                     logging.debug(f"Skipping event with unparseable date: {event.get('title', 'Unknown')}")
                     continue
                 
-                # Apply date range filter
+                # Apply date range filter (only if date range is specified)
                 if start_date and end_date:
                     if not (start_date.date() <= event_date.date() <= end_date.date()):
+                        logging.debug(f"Date filter: {event_date.date()} not in range {start_date.date()} to {end_date.date()}")
                         continue
                 
                 # Apply area filter
                 if filters and filters.get('area'):
                     event_area = self._normalize_area_value(event.get('area'))
                     filter_area = self._normalize_area_value(filters['area'])
+                    
+                    logging.debug(f"Comparing areas: event='{event.get('area')}' (normalized: '{event_area}') vs filter='{filters['area']}' (normalized: '{filter_area}')")
                     
                     if event_area != filter_area:
                         logging.debug(f"Area filter mismatch: {event_area} != {filter_area}")
@@ -350,6 +357,8 @@ class GoogleSheetsDataStore:
                 if filters and filters.get('event_type'):
                     event_type = self._normalize_event_type(event.get('event_type'))
                     filter_type = self._normalize_event_type(filters['event_type'])
+                    
+                    logging.debug(f"Comparing event types: event='{event.get('event_type')}' (normalized: '{event_type}') vs filter='{filters['event_type']}' (normalized: '{filter_type}')")
                     
                     if event_type != filter_type:
                         logging.debug(f"Event type filter mismatch: {event_type} != {filter_type}")
@@ -381,12 +390,16 @@ class GoogleSheetsDataStore:
         
         filtered_accommodations = []
         
+        logging.info(f"Filtering accommodations with filters: {filters}")
+        
         for accommodation in accommodations:
             try:
                 # Apply area filter
                 if filters and filters.get('area'):
                     acc_area = self._normalize_area_value(accommodation.get('area'))
                     filter_area = self._normalize_area_value(filters['area'])
+                    
+                    logging.debug(f"Comparing areas: acc='{accommodation.get('area')}' (normalized: '{acc_area}') vs filter='{filters['area']}' (normalized: '{filter_area}')")
                     
                     if acc_area != filter_area:
                         logging.debug(f"Area filter mismatch: {acc_area} != {filter_area}")
@@ -400,6 +413,7 @@ class GoogleSheetsDataStore:
                         price_match = re.search(r'(\d+(?:\.\d+)?)', price_str)
                         if price_match:
                             price = float(price_match.group(1))
+                            logging.debug(f"Comparing prices: {price} <= {filters['max_budget']}")
                             if price > float(filters['max_budget']):
                                 logging.debug(f"Budget filter: {price} > {filters['max_budget']}")
                                 continue
@@ -413,6 +427,8 @@ class GoogleSheetsDataStore:
                 if filters and filters.get('accommodation_type'):
                     acc_type = str(accommodation.get('type', '')).lower().strip()
                     filter_type = str(filters['accommodation_type']).lower().strip()
+                    
+                    logging.debug(f"Comparing types: acc='{accommodation.get('type')}' (normalized: '{acc_type}') vs filter='{filters['accommodation_type']}' (normalized: '{filter_type}')")
                     
                     if acc_type != filter_type:
                         logging.debug(f"Type filter mismatch: {acc_type} != {filter_type}")
@@ -1111,6 +1127,87 @@ def test_dialogflow_cx():
                 request._cached_json = original_req
         
         return jsonify(results)
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/debug-data', methods=['GET'])
+def debug_data():
+    """Debug endpoint to see all data and test filtering directly"""
+    try:
+        # Get all data
+        all_events = data_store._get_sheet_data('events')
+        all_accommodations = data_store._get_sheet_data('accommodations')
+        all_outfits = data_store._get_sheet_data('outfits')
+        
+        # Analyze area values in the data
+        event_areas = set()
+        accommodation_areas = set()
+        
+        for event in all_events:
+            if event.get('area'):
+                event_areas.add(str(event.get('area')))
+        
+        for accommodation in all_accommodations:
+            if accommodation.get('area'):
+                accommodation_areas.add(str(accommodation.get('area')))
+        
+        # Test different filtering scenarios
+        test_results = {}
+        
+        # Test events filtering
+        event_tests = [
+            {'name': 'no_filters', 'filters': {}},
+            {'name': 'area_lekki', 'filters': {'area': 'lekki'}},
+            {'name': 'event_type_concert', 'filters': {'event_type': 'concert'}},
+            {'name': 'both_filters', 'filters': {'area': 'lekki', 'event_type': 'concert'}}
+        ]
+        
+        for test in event_tests:
+            events = data_store.get_events(test['filters'])
+            test_results[f"events_{test['name']}"] = {
+                'filters': test['filters'],
+                'count': len(events),
+                'events': events
+            }
+        
+        # Test accommodation filtering
+        acc_tests = [
+            {'name': 'no_filters', 'filters': {}},
+            {'name': 'area_lekki', 'filters': {'area': 'lekki'}},
+            {'name': 'budget_30000', 'filters': {'max_budget': 30000}},
+            {'name': 'both_filters', 'filters': {'area': 'lekki', 'max_budget': 30000}}
+        ]
+        
+        for test in acc_tests:
+            accommodations = data_store.get_accommodations(test['filters'])
+            test_results[f"accommodations_{test['name']}"] = {
+                'filters': test['filters'],
+                'count': len(accommodations),
+                'accommodations': accommodations
+            }
+        
+        return jsonify({
+            'data_counts': {
+                'events': len(all_events),
+                'accommodations': len(all_accommodations),
+                'outfits': len(all_outfits)
+            },
+            'area_analysis': {
+                'event_areas': list(event_areas),
+                'accommodation_areas': list(accommodation_areas)
+            },
+            'sample_data': {
+                'events': all_events[:2] if all_events else [],
+                'accommodations': all_accommodations[:2] if all_accommodations else [],
+                'outfits': all_outfits[:2] if all_outfits else []
+            },
+            'test_results': test_results
+        })
         
     except Exception as e:
         return jsonify({
