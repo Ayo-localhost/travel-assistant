@@ -10,6 +10,7 @@ import os
 import json
 import tempfile
 import uuid
+import requests
 import calendar
 import re
 from flask_cors import CORS
@@ -23,6 +24,12 @@ PROJECT_ID = "codematic-playground"
 AGENT_ID = "10a6c174-ed65-4549-894d-eaa4dfa3d432"
 REGION = "global"
 LANGUAGE_CODE = "en-US"
+
+
+# WHATSAPP CONFIGURATION
+WHATSAPP_TOKEN="EAAPnZBCqPuu0BPFdXrKko0W4xUhbUt2rLmysynYDvKJmdaUWnGzLT2I3oKJevRTYXE3H1jdrfb8oZCTDz3p9TMihWZBye7bEmZCZA66k2VhZAuMAbPsBP5vLkQrUMpLGoOCgPq4au8Qf6zASFHAbL13u3NP5lwJrStZATkL9bcCJZCRCRcVTWrbweuEgqDjvpablDy7pyV1PjkEevm7ZC4adu1FZB66v7ZBX7U8CqYNKbN0"
+VERIFY_TOKEN = "TEAMCARTRANDOMVERIFYTOKEN"
+PHONENUMBER_ID = "732548379943793"
 
 # Configure the Dialogflow CX client
 if REGION and REGION != "global":
@@ -897,6 +904,358 @@ def test_sheets():
             'error': str(e)
         }), 500
 
+
+def send_template_message(recipient_phone_number):
+    """
+    Sends a WhatsApp template message using the Meta Graph API.
+
+    Args:
+        phone_number_id (str): The ID of your WhatsApp Business Account phone number.
+        recipient_phone_number (str): The phone number of the recipient (e.g., "2348012345678").
+    """
+
+    url = f"https://graph.facebook.com/v20.0/{PHONENUMBER_ID}/messages"
+    
+    headers = {
+        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+
+    data = {
+        "messaging_product": "whatsapp",
+        "to": recipient_phone_number,
+        "type": "template",
+        "template": {
+            "name": "hello_world",
+            "language": {
+                "code": "en_US"
+            },
+           
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+        print("Message sent successfully!")
+        print(json.dumps(response.json(), indent=2))
+        return response.json()
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP error occurred: {err}")
+        print(f"Response content: {response.text}")
+        return None
+    except requests.exceptions.ConnectionError as err:
+        print(f"Error connecting to the server: {err}")
+        return None
+    except requests.exceptions.Timeout as err:
+        print(f"The request timed out: {err}")
+        return None
+    except requests.exceptions.RequestException as err:
+        print(f"An unexpected error occurred: {err}")
+        return None
+
+
+def send_whatsapp_text_message(phone_number_id, recipient_phone_number, message_text):
+    """
+    Sends a WhatsApp text message using the Meta Graph API.
+
+    Args:
+        phone_number_id (str): The ID of your WhatsApp Business Account phone number.
+        recipient_phone_number (str): The phone number of the recipient (e.g., "2348012345678").
+        message_text (str): The text message to send.
+    """
+    # Use v20.0 instead of v23.0 - your token might not support v23.0
+    url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"
+    
+    headers = {
+        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+
+    formatted_number = recipient_phone_number if recipient_phone_number.startswith('+') else f'+{recipient_phone_number}'
+    logger.log(f"Sending WhatsApp message to {formatted_number}: {message_text}")
+
+    data = {
+        "messaging_product": "whatsapp",
+        "to": formatted_number,
+        "type": "text",
+        "text": {
+            "body": message_text
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        logger.log(f"WhatsApp message sent successfully to {recipient_phone_number}")
+        return response.json()
+    except requests.exceptions.RequestException as err:
+        logger.error(f"Error sending WhatsApp message: {err}")
+        if hasattr(err, 'response') and err.response:
+            logger.error(f"Response content: {err.response.text}")
+        return None
+
+async def chat_with_dialogflow_cx(user_message, user_id):
+    """
+    Send a message to Dialogflow CX and get the response.
+    
+    Args:
+        user_message (str): The message from the user
+        user_id (str): Unique identifier for the user session
+    
+    Returns:
+        str: The response from Dialogflow CX
+    """
+    try:
+        # Create unique session ID for this user
+        session_id = f"whatsapp-session-{user_id}"
+        
+        # Construct the session path for Dialogflow CX
+        session_path = session_client.session_path(PROJECT_ID, REGION, AGENT_ID, session_id)
+
+        # Create a TextInput object
+        text_input = dialogflow_cx.types.TextInput(text=user_message)
+
+        # Create a QueryInput object with language_code
+        query_input = dialogflow_cx.types.QueryInput(
+            text=text_input,
+            language_code=LANGUAGE_CODE
+        )
+
+        # Send the query to Dialogflow CX
+        response = session_client.detect_intent(
+            request={"session": session_path, "query_input": query_input}
+        )
+
+        # Extract the fulfillment text from Dialogflow CX's response
+        fulfillment_texts = [
+            message.text.text[0]
+            for message in response.query_result.response_messages
+            if message.text.text
+        ]
+        fulfillment_text = " ".join(fulfillment_texts) if fulfillment_texts else "I'm sorry, I didn't understand that. Can you please rephrase?"
+
+        # Log the interaction
+        logger.log(f"WhatsApp User Query: {response.query_result.text}")
+        logger.log(f"Detected Intent: {response.query_result.match.intent.display_name if response.query_result.match.intent else 'N/A'}")
+        logger.log(f"Confidence: {response.query_result.match.confidence if response.query_result.match.intent else 'N/A'}")
+        logger.log(f"Agent Response: {fulfillment_text}")
+
+        return fulfillment_text
+
+    except Exception as e:
+        logger.error(f"Error calling Dialogflow CX API: {e}")
+        return "I'm having trouble processing your request right now. Please try again later."
+
+def chat_with_dialogflow_cx_sync(user_message, user_id):
+    """
+    Send a message to Dialogflow CX and get the response (synchronous version).
+    
+    Args:
+        user_message (str): The message from the user
+        user_id (str): Unique identifier for the user session
+    
+    Returns:
+        str: The response from Dialogflow CX
+    """
+    try:
+        # Create unique session ID for this user
+        session_id = f"whatsapp-session-{user_id}"
+        
+        # Construct the session path for Dialogflow CX
+        session_path = session_client.session_path(PROJECT_ID, REGION, AGENT_ID, session_id)
+
+        # Create a TextInput object
+        text_input = dialogflow_cx.types.TextInput(text=user_message)
+
+        # Create a QueryInput object with language_code
+        query_input = dialogflow_cx.types.QueryInput(
+            text=text_input,
+            language_code=LANGUAGE_CODE
+        )
+
+        # Send the query to Dialogflow CX
+        response = session_client.detect_intent(
+            request={"session": session_path, "query_input": query_input}
+        )
+
+        # Extract the fulfillment text from Dialogflow CX's response
+        fulfillment_texts = [
+            message.text.text[0]
+            for message in response.query_result.response_messages
+            if message.text.text
+        ]
+        fulfillment_text = " ".join(fulfillment_texts) if fulfillment_texts else "I'm sorry, I didn't understand that. Can you please rephrase?"
+
+        # Log the interaction
+        logger.log(f"WhatsApp User Query: {response.query_result.text}")
+        logger.log(f"Detected Intent: {response.query_result.match.intent.display_name if response.query_result.match.intent else 'N/A'}")
+        logger.log(f"Confidence: {response.query_result.match.confidence if response.query_result.match.intent else 'N/A'}")
+        logger.log(f"Agent Response: {fulfillment_text}")
+
+        return fulfillment_text
+
+    except Exception as e:
+        logger.error(f"Error calling Dialogflow CX API: {e}")
+        return "I'm having trouble processing your request right now. Please try again later."
+
+
+def process_message(message: dict, contact: dict = None):
+    """
+    Processes an individual incoming WhatsApp message and responds via Dialogflow CX.
+    """
+    logger.log("--- Processing Incoming WhatsApp Message ---")
+    
+    message_id = message.get('id')
+    from_number = message.get('from')
+    message_type = message.get('type')
+    
+    logger.log(f"Message ID: {message_id}")
+    logger.log(f"From: {from_number}")
+    logger.log(f"Type: {message_type}")
+
+    if contact:
+        logger.log(f"Contact Name: {contact.get('profile', {}).get('name')}")
+        logger.log(f"Contact Wa_ID: {contact.get('wa_id')}")
+
+
+    # Only handle text messages for now
+    if message_type == 'text':
+        user_message = message.get('text', {}).get('body', '')
+        logger.log(f"Text Message: {user_message}")
+        
+        if user_message.strip():
+            try:
+                # Get response from Dialogflow CX (using sync version)
+                dialogflow_response = chat_with_dialogflow_cx_sync(user_message, from_number)
+                
+                # Send response back to WhatsApp user
+                send_result = send_whatsapp_text_message(
+                    phone_number_id=PHONENUMBER_ID,
+                    recipient_phone_number=from_number,
+                    message_text=dialogflow_response
+                )
+                
+                if send_result:
+                    logger.log(f"Successfully responded to WhatsApp message from {from_number}")
+                else:
+                    logger.error(f"Failed to send WhatsApp response to {from_number}")
+                    
+            except Exception as e:
+                logger.error(f"Error processing WhatsApp message: {e}")
+                
+                # Send error message back to user
+                error_message = "Sorry, I'm having technical difficulties. Please try again later."
+                try:
+                    send_whatsapp_text_message(
+                        phone_number_id=PHONENUMBER_ID,
+                        recipient_phone_number=from_number,
+                        message_text=error_message
+                    )
+                except Exception as send_error:
+                    logger.error(f"Failed to send error message: {send_error}")
+        else:
+            logger.warn("Received empty text message")
+    else:
+        # Handle non-text messages
+        logger.log(f"Received non-text message of type: {message_type}")
+        
+        # Send a response asking for text input
+        unsupported_message = "I can only handle text messages right now. Please send me a text message! 😊"
+        
+        try:
+            send_whatsapp_text_message(
+                phone_number_id=PHONENUMBER_ID,
+                recipient_phone_number=from_number,
+                message_text=unsupported_message
+            )
+        except Exception as send_error:
+            logger.error(f"Failed to send unsupported message response: {send_error}")
+    
+    logger.log("-" * 50)
+
+# Simulate a basic logger
+class SimpleLogger:
+    def log(self, message):
+        print(f"[INFO] {message}")
+
+    def warn(self, message):
+        print(f"[WARN] {message}")
+
+    def error(self, message, stack=None):
+        print(f"[ERROR] {message}")
+        if stack:
+            print(f"Stack: {stack}")
+
+    def debug(self, message):
+        print(f"[DEBUG] {message}")
+
+logger = SimpleLogger()
+
+# --- Webhook GET Endpoint (Verification) ---
+@app.route('/whatsapp/webhook', methods=['GET'])
+def verify_webhook():
+    """
+    Handles the GET request for webhook verification.
+    Meta sends a GET request to verify the webhook URL.
+    """
+    mode = request.args.get('hub.mode')
+    token = request.args.get('hub.verify_token')
+    challenge = request.args.get('hub.challenge')
+
+    logger.debug(
+        f"Verifying webhook: mode={mode}, token={token}, expected={VERIFY_TOKEN},"
+        f" challenge={challenge}"
+    )
+
+    if mode == 'subscribe' and token == VERIFY_TOKEN:
+        logger.log('Webhook verification successful')
+        return challenge, 200 # Return challenge with 200 OK
+    else:
+        logger.warn('Webhook verification failed')
+        return 'Verification failed', 403 # Return 403 Forbidden for failure
+
+# --- Webhook POST Endpoint (Incoming Messages) ---
+@app.route('/whatsapp/webhook', methods=['POST'])
+def handle_webhook():
+    """
+    Handles POST requests from Meta when new messages or events occur.
+    """
+    payload = request.get_json()
+    logger.log('Received webhook payload:')
+    logger.log(json.dumps(payload, indent=2)) # Pretty print the payload for debugging
+
+    try:
+        if payload.get('object') != 'whatsapp_business_account':
+            logger.warn(f"Received unexpected payload object: {payload.get('object')}")
+            return jsonify({"status": "ignored", "reason": "unexpected object"}), 200
+
+        for entry in payload.get('entry', []):
+            for change in entry.get('changes', []):
+                if change.get('field') != 'messages':
+                    continue
+
+                value = change.get('value')
+                if not value or not value.get('messages') or len(value['messages']) == 0:
+                    continue
+
+                for message in value['messages']:
+                    # Extract contact info if available
+                    contact = None
+                    if value.get('contacts') and len(value['contacts']) > 0:
+                        contact = value['contacts'][0]
+
+                    # Process the message (this is where you'd add your main logic)
+                    process_message(message, contact)
+
+        return jsonify({"status": "success"}), 200 # Always return 200 OK to Meta
+    except Exception as e:
+        logger.error(
+            f"Error handling webhook: {e}",
+            getattr(e, 'args', None) # Get stack if available (basic attempt)
+        )
+        # Even on error, return 200 to Meta to prevent retries (handle errors internally)
+        return jsonify({"status": "error", "message": str(e)}), 200
 
 @app.route('/test-filters', methods=['POST'])
 def test_filters():
