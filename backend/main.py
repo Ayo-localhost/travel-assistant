@@ -10,6 +10,8 @@ import os
 import json
 import tempfile
 import uuid
+import calendar
+import re
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -17,9 +19,9 @@ CORS(app)
 logging.basicConfig(level=logging.INFO)
 
 # Dialogflow CX Configuration
-PROJECT_ID = "codematic-playground"  # Extracted from your agent URL
-AGENT_ID = "10a6c174-ed65-4549-894d-eaa4dfa3d432"  # Extracted from your agent URL
-REGION = "global"  # Extracted from your agent URL
+PROJECT_ID = "codematic-playground"
+AGENT_ID = "10a6c174-ed65-4549-894d-eaa4dfa3d432"
+REGION = "global"
 LANGUAGE_CODE = "en-US"
 
 # Configure the Dialogflow CX client
@@ -53,6 +55,84 @@ SHEET_CONFIG = {
     }
 }
 
+
+class DateRangeParser:
+    """Utility class to parse various date range queries"""
+    
+    @staticmethod
+    def parse_date_query(query_text):
+        """Parse natural language date queries and return date range"""
+        if not query_text:
+            return None, None
+            
+        query_lower = query_text.lower()
+        current_date = datetime.now()
+        
+        # Month name patterns
+        months = {
+            'january': 1, 'february': 2, 'march': 3, 'april': 4,
+            'may': 5, 'june': 6, 'july': 7, 'august': 8,
+            'september': 9, 'october': 10, 'november': 11, 'december': 12,
+            'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+            'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+        }
+        
+        # Check for specific month queries
+        for month_name, month_num in months.items():
+            if month_name in query_lower:
+                # Default to current year or next year if month has passed
+                year = current_date.year
+                if month_num < current_date.month:
+                    year += 1
+                
+                # Get first and last day of the month
+                start_date = datetime(year, month_num, 1)
+                last_day = calendar.monthrange(year, month_num)[1]
+                end_date = datetime(year, month_num, last_day)
+                
+                logging.info(f"Parsed month query: {month_name} -> {start_date} to {end_date}")
+                return start_date, end_date
+        
+        # This week
+        if 'this week' in query_lower or 'current week' in query_lower:
+            week_start = current_date - timedelta(days=current_date.weekday())
+            week_end = week_start + timedelta(days=6)
+            return week_start, week_end
+        
+        # Next week
+        if 'next week' in query_lower:
+            week_start = current_date + timedelta(days=7-current_date.weekday())
+            week_end = week_start + timedelta(days=6)
+            return week_start, week_end
+        
+        # This month
+        if 'this month' in query_lower or 'current month' in query_lower:
+            month_start = current_date.replace(day=1)
+            next_month = month_start.replace(month=month_start.month % 12 + 1, day=1)
+            month_end = next_month - timedelta(days=1)
+            return month_start, month_end
+        
+        # Weekend patterns
+        if 'weekend' in query_lower or 'this weekend' in query_lower:
+            days_until_saturday = (5 - current_date.weekday()) % 7
+            saturday = current_date + timedelta(days=days_until_saturday)
+            sunday = saturday + timedelta(days=1)
+            return saturday, sunday
+        
+        # Today/tomorrow patterns
+        if 'today' in query_lower:
+            return current_date, current_date
+        
+        if 'tomorrow' in query_lower:
+            tomorrow = current_date + timedelta(days=1)
+            return tomorrow, tomorrow
+        
+        # Default to current week if no specific date found
+        logging.info("No specific date pattern found, defaulting to current week")
+        week_end = current_date + timedelta(days=7)
+        return current_date, week_end
+
+
 class GoogleSheetsDataStore:
     def __init__(self):
         self.gc = None
@@ -61,16 +141,13 @@ class GoogleSheetsDataStore:
     def _download_service_account_from_gcs(self):
         """Download service account key from Google Cloud Storage"""
         try:
-            # GCS bucket and file details
             bucket_name = 'travel-assistant-demo'
             blob_name = 'service-account-key.json'
             
-            # Initialize storage client (uses default credentials or ADC)
             storage_client = storage.Client()
             bucket = storage_client.bucket(bucket_name)
             blob = bucket.blob(blob_name)
             
-            # Download to temporary file
             temp_file = tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False)
             blob.download_to_filename(temp_file.name)
             
@@ -93,7 +170,6 @@ class GoogleSheetsDataStore:
                 creds = Credentials.from_service_account_file(temp_file_path, scopes=SCOPES)
                 logging.info("Loaded credentials from GCS")
                 
-                # Clean up temporary file
                 try:
                     os.unlink(temp_file_path)
                 except:
@@ -115,7 +191,7 @@ class GoogleSheetsDataStore:
                     logging.info("Loaded credentials from environment variables")
             
             if not creds:
-                raise Exception("No Google Service Account credentials found in GCS, local file, or environment variables")
+                raise Exception("No Google Service Account credentials found")
             
             self.gc = gspread.authorize(creds)
             logging.info("Google Sheets client initialized successfully")
@@ -135,14 +211,12 @@ class GoogleSheetsDataStore:
             sheet_id = config['sheet_id']
             gid = config['gid']
             
-            # Open the spreadsheet and specific worksheet
             spreadsheet = self.gc.open_by_key(sheet_id)
             worksheet = spreadsheet.get_worksheet_by_id(int(gid))
             
-            # Get all records as dictionaries
             records = worksheet.get_all_records()
             
-            # Convert keys to lowercase with underscores
+            # Normalize keys
             normalized_records = []
             for record in records:
                 normalized_record = {}
@@ -158,127 +232,244 @@ class GoogleSheetsDataStore:
             logging.error(f"Error loading {sheet_type} data from Google Sheets: {e}")
             return []
     
-    def get_current_week_events(self, filters=None):
-        """Get events for current week with optional filters"""
-        events = self._get_sheet_data('events')
+    def _normalize_area_value(self, area_value):
+        """Normalize area values for comparison"""
+        if not area_value:
+            return None
         
-        current_date = datetime.now()
-        week_end = current_date + timedelta(days=7)
+        area_str = str(area_value).lower().strip()
         
-        filtered_events = []
-        for event in events:
+        # Area mappings for flexible matching
+        area_mappings = {
+            'victoria_island': ['vi', 'victoria island', 'island', 'vic island', 'victoria_island'],
+            'lekki': ['lekki', 'lekki phase 1', 'phase 1', 'admiralty', 'lekki_phase_1'],
+            'ikeja': ['ikeja', 'mainland', 'gra', 'ikeja_gra'],
+            'ikoyi': ['ikoyi', 'old ikoyi', 'banana island', 'banana_island'],
+            'surulere': ['surulere', 'suru', 'national theatre area', 'national_theatre']
+        }
+        
+        # Check for direct matches first
+        for canonical, variations in area_mappings.items():
+            if area_str in variations or area_str == canonical:
+                return canonical
+        
+        return area_str
+    
+    def _parse_date_from_string(self, date_str):
+        """Parse date string with multiple format support"""
+        if not date_str or str(date_str).lower().strip() in ['', 'tbd', 'n/a', 'none']:
+            return None
+        
+        date_str = str(date_str).strip()
+        
+        # Try different date formats
+        date_formats = [
+            '%Y-%m-%d',      # 2024-12-16
+            '%d/%m/%Y',      # 16/12/2024
+            '%m/%d/%Y',      # 12/16/2024
+            '%d-%m-%Y',      # 16-12-2024
+            '%Y/%m/%d',      # 2024/12/16
+            '%d %B %Y',      # 16 December 2024
+            '%B %d, %Y',     # December 16, 2024
+        ]
+        
+        for date_format in date_formats:
             try:
-                # Handle different date formats
-                date_str = str(event.get('date', '')).strip()
-                if not date_str or date_str.lower() in ['', 'tbd', 'n/a']:
-                    continue
-                
-                # Try different date formats
-                event_date = None
-                for date_format in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y']:
-                    try:
-                        event_date = datetime.strptime(date_str, date_format)
-                        break
-                    except ValueError:
-                        continue
-                
-                if not event_date:
-                    continue
-                
-                # Filter by current week
-                if current_date <= event_date <= week_end:
-                    # Apply additional filters if provided
-                    if filters:
-                        if filters.get('area') and str(event.get('area', '')).lower() != filters['area'].lower():
-                            continue
-                        if filters.get('event_type') and str(event.get('event_type', '')).lower() != filters['event_type'].lower():
-                            continue
-                    
-                    filtered_events.append(event)
-                    
-            except (ValueError, KeyError, TypeError) as e:
-                logging.debug(f"Skipping event due to date parsing error: {e}")
+                return datetime.strptime(date_str, date_format)
+            except ValueError:
                 continue
         
-        # Sort by date and return top 3
-        def get_sort_date(event):
+        logging.debug(f"Could not parse date: {date_str}")
+        return None
+    
+    def get_events(self, filters=None, date_range=None):
+        """Get events with improved filtering and date range support"""
+        events = self._get_sheet_data('events')
+        
+        if not events:
+            logging.warning("No events data found")
+            return []
+        
+        filtered_events = []
+        
+        # Parse date range
+        start_date, end_date = None, None
+        if date_range:
+            start_date, end_date = date_range
+        elif filters and filters.get('query_text'):
+            start_date, end_date = DateRangeParser.parse_date_query(filters['query_text'])
+        
+        logging.info(f"Filtering events with date range: {start_date} to {end_date}")
+        
+        for event in events:
             try:
-                date_str = str(event.get('date', '')).strip()
-                for date_format in ['%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y']:
-                    try:
-                        return datetime.strptime(date_str, date_format)
-                    except ValueError:
+                # Parse event date
+                event_date = self._parse_date_from_string(event.get('date'))
+                
+                if not event_date:
+                    logging.debug(f"Skipping event with unparseable date: {event.get('title', 'Unknown')}")
+                    continue
+                
+                # Apply date range filter
+                if start_date and end_date:
+                    if not (start_date.date() <= event_date.date() <= end_date.date()):
                         continue
-                return datetime.min
-            except:
-                return datetime.min
+                
+                # Apply area filter
+                if filters and filters.get('area'):
+                    event_area = self._normalize_area_value(event.get('area'))
+                    filter_area = self._normalize_area_value(filters['area'])
+                    
+                    if event_area != filter_area:
+                        logging.debug(f"Area filter mismatch: {event_area} != {filter_area}")
+                        continue
+                
+                # Apply event type filter
+                if filters and filters.get('event_type'):
+                    event_type = str(event.get('event_type', '')).lower().strip()
+                    filter_type = str(filters['event_type']).lower().strip()
+                    
+                    if event_type != filter_type:
+                        logging.debug(f"Event type filter mismatch: {event_type} != {filter_type}")
+                        continue
+                
+                filtered_events.append(event)
+                
+            except Exception as e:
+                logging.debug(f"Error processing event: {e}")
+                continue
+        
+        # Sort by date
+        def get_sort_date(event):
+            event_date = self._parse_date_from_string(event.get('date'))
+            return event_date if event_date else datetime.min
         
         filtered_events.sort(key=get_sort_date)
-        return filtered_events[:3]
+        
+        logging.info(f"Found {len(filtered_events)} events after filtering")
+        return filtered_events[:5]  # Return top 5 instead of 3
     
     def get_accommodations(self, filters=None):
-        """Get accommodation options with filters"""
+        """Get accommodation options with improved filters"""
         accommodations = self._get_sheet_data('accommodations')
+        
+        if not accommodations:
+            logging.warning("No accommodations data found")
+            return []
         
         filtered_accommodations = []
         
         for accommodation in accommodations:
-            # Apply filters
-            if filters:
-                if filters.get('area') and str(accommodation.get('area', '')).lower() != filters['area'].lower():
-                    continue
+            try:
+                # Apply area filter
+                if filters and filters.get('area'):
+                    acc_area = self._normalize_area_value(accommodation.get('area'))
+                    filter_area = self._normalize_area_value(filters['area'])
                     
-                if filters.get('max_budget'):
-                    try:
-                        price_str = str(accommodation.get('price_per_night', '0')).replace(',', '').replace('₦', '').strip()
-                        price = float(price_str)
-                        if price > filters['max_budget']:
-                            continue
-                    except (ValueError, TypeError):
+                    if acc_area != filter_area:
+                        logging.debug(f"Area filter mismatch: {acc_area} != {filter_area}")
                         continue
-                        
-                if filters.get('type') and str(accommodation.get('type', '')).lower() != filters['type'].lower():
-                    continue
-            
-            filtered_accommodations.append(accommodation)
+                
+                # Apply budget filter
+                if filters and filters.get('max_budget'):
+                    try:
+                        price_str = str(accommodation.get('price_per_night', '0')).replace(',', '').replace('₦', '').replace('NGN', '').strip()
+                        # Extract numeric value from price string
+                        price_match = re.search(r'(\d+(?:\.\d+)?)', price_str)
+                        if price_match:
+                            price = float(price_match.group(1))
+                            if price > float(filters['max_budget']):
+                                logging.debug(f"Budget filter: {price} > {filters['max_budget']}")
+                                continue
+                        else:
+                            logging.debug(f"Could not parse price: {price_str}")
+                    except (ValueError, TypeError) as e:
+                        logging.debug(f"Error parsing price: {e}")
+                        continue
+                
+                # Apply accommodation type filter
+                if filters and filters.get('accommodation_type'):
+                    acc_type = str(accommodation.get('type', '')).lower().strip()
+                    filter_type = str(filters['accommodation_type']).lower().strip()
+                    
+                    if acc_type != filter_type:
+                        logging.debug(f"Type filter mismatch: {acc_type} != {filter_type}")
+                        continue
+                
+                filtered_accommodations.append(accommodation)
+                
+            except Exception as e:
+                logging.debug(f"Error processing accommodation: {e}")
+                continue
         
-        # Sort by rating and return top 3
+        # Sort by rating (descending)
         def get_rating(accommodation):
             try:
                 rating_str = str(accommodation.get('rating', '0')).strip()
-                return float(rating_str)
+                rating_match = re.search(r'(\d+(?:\.\d+)?)', rating_str)
+                return float(rating_match.group(1)) if rating_match else 0.0
             except (ValueError, TypeError):
                 return 0.0
         
         filtered_accommodations.sort(key=get_rating, reverse=True)
-        return filtered_accommodations[:3]
+        
+        logging.info(f"Found {len(filtered_accommodations)} accommodations after filtering")
+        return filtered_accommodations[:5]  # Return top 5
     
     def get_outfit_suggestions(self, event_type, gender=None):
         """Get outfit suggestions for specific event types"""
         outfits = self._get_sheet_data('outfits')
         
+        if not outfits:
+            logging.warning("No outfits data found")
+            return []
+        
         filtered_outfits = []
         
         for outfit in outfits:
-            # Filter by event type and gender
-            outfit_event_type = str(outfit.get('event_type', '')).lower()
-            outfit_gender = str(outfit.get('gender', '')).lower()
-            
-            if outfit_event_type == event_type.lower():
-                if not gender or outfit_gender == gender.lower() or outfit_gender == 'unisex':
-                    filtered_outfits.append(outfit)
+            try:
+                # Filter by event type
+                outfit_event_type = str(outfit.get('event_type', '')).lower().strip()
+                filter_event_type = str(event_type).lower().strip()
+                
+                if outfit_event_type != filter_event_type:
+                    continue
+                
+                # Filter by gender
+                outfit_gender = str(outfit.get('gender', '')).lower().strip()
+                
+                if gender:
+                    filter_gender = str(gender).lower().strip()
+                    if outfit_gender != filter_gender and outfit_gender != 'unisex':
+                        continue
+                
+                filtered_outfits.append(outfit)
+                
+            except Exception as e:
+                logging.debug(f"Error processing outfit: {e}")
+                continue
         
-        return filtered_outfits[:3]
+        logging.info(f"Found {len(filtered_outfits)} outfits after filtering")
+        return filtered_outfits[:5]  # Return up to 5 outfits
+
 
 # Initialize data store
 data_store = GoogleSheetsDataStore()
 
-def format_events_response(events):
+
+def format_events_response(events, filters=None):
     """Format events data for Dialogflow response"""
     if not events:
-        return "I couldn't find any events for this week. Check back soon for updates! 🎉"
+        filter_info = ""
+        if filters:
+            if filters.get('area'):
+                filter_info += f" in {filters['area'].title()}"
+            if filters.get('event_type'):
+                filter_info += f" for {filters['event_type'].replace('_', ' ').title()}"
+        
+        return f"I couldn't find any events{filter_info}. Try adjusting your search or check back soon! 🎉"
     
-    response_text = "Here are the hottest events this week:\n\n"
+    response_text = "Here are the hottest events I found:\n\n"
     
     for i, event in enumerate(events, 1):
         event_type = str(event.get('event_type', '')).lower()
@@ -289,14 +480,22 @@ def format_events_response(events):
         response_text += f"📍 {event.get('location', 'TBD')}, {event.get('area', 'Lagos')}\n"
         response_text += f"✨ Vibe: {event.get('vibe', 'Amazing')}\n\n"
     
-    response_text += "Want to filter by location, date, or event type? Or need outfit inspiration for any of these? 👗"
+    response_text += "Want to filter by location, date, or event type? Or need outfit inspiration? 👗"
     
     return response_text
 
-def format_accommodation_response(accommodations):
+
+def format_accommodation_response(accommodations, filters=None):
     """Format accommodation data for Dialogflow response"""
     if not accommodations:
-        return "Sorry, I couldn't find available accommodations right now. Try adjusting your filters! 🏨"
+        filter_info = ""
+        if filters:
+            if filters.get('area'):
+                filter_info += f" in {filters['area'].title()}"
+            if filters.get('max_budget'):
+                filter_info += f" under ₦{filters['max_budget']}"
+        
+        return f"Sorry, I couldn't find available accommodations{filter_info}. Try adjusting your filters! 🏨"
     
     response_text = "Here are top-rated places to stay:\n\n"
     
@@ -319,12 +518,13 @@ def format_accommodation_response(accommodations):
     
     return response_text
 
+
 def format_outfit_response(outfits, event_type):
     """Format outfit suggestions for response"""
     if not outfits:
-        return f"I don't have outfit suggestions for {event_type} right now, but I'm always updating my style database! 💫"
+        return f"I don't have outfit suggestions for {event_type.replace('_', ' ')} right now, but I'm always updating my style database! 💫"
     
-    response_text = f"Perfect! Here are stunning {event_type} looks:\n\n"
+    response_text = f"Perfect! Here are stunning {event_type.replace('_', ' ')} looks:\n\n"
     
     for i, outfit in enumerate(outfits, 1):
         gender = str(outfit.get('gender', '')).lower()
@@ -345,11 +545,12 @@ def format_outfit_response(outfits, event_type):
     
     return response_text
 
+
 @app.route('/chat', methods=['POST'])
 def chat_with_agent():
     """
-    New endpoint: Receives a message from frontend, sends it to Dialogflow CX agent,
-    and returns the agent's response. The agent will call the webhook if needed.
+    Endpoint: Receives a message from frontend, sends it to Dialogflow CX agent,
+    and returns the agent's response.
     """
     try:
         if not request.is_json:
@@ -357,32 +558,24 @@ def chat_with_agent():
 
         data = request.get_json()
         user_message = data.get('message')
-        user_id = data.get('user_id', str(uuid.uuid4()))  # Generate unique session if not provided
+        user_id = data.get('user_id', str(uuid.uuid4()))
 
         if not user_message:
             return jsonify({"error": "Message field is required"}), 400
 
-        # Create unique session ID for this user
         session_id = f"session-{user_id}"
-        
-        # Construct the session path for Dialogflow CX
         session_path = session_client.session_path(PROJECT_ID, REGION, AGENT_ID, session_id)
 
-        # Create a TextInput object
         text_input = dialogflow_cx.types.TextInput(text=user_message)
-
-        # Create a QueryInput object with language_code
         query_input = dialogflow_cx.types.QueryInput(
             text=text_input,
             language_code=LANGUAGE_CODE
         )
 
-        # Send the query to Dialogflow CX
         response = session_client.detect_intent(
             request={"session": session_path, "query_input": query_input}
         )
 
-        # Extract the fulfillment text from Dialogflow CX's response
         fulfillment_texts = [
             message.text.text[0]
             for message in response.query_result.response_messages
@@ -390,10 +583,8 @@ def chat_with_agent():
         ]
         fulfillment_text = " ".join(fulfillment_texts)
 
-        # Log the interaction
         logging.info(f"User Query: {response.query_result.text}")
         logging.info(f"Detected Intent: {response.query_result.match.intent.display_name if response.query_result.match.intent else 'N/A'}")
-        logging.info(f"Confidence: {response.query_result.match.confidence if response.query_result.match.intent else 'N/A'}")
         logging.info(f"Agent Response: {fulfillment_text}")
 
         return jsonify({
@@ -407,47 +598,65 @@ def chat_with_agent():
         logging.error(f"Error calling Dialogflow CX API: {e}")
         return jsonify({"error": f"Could not process your request: {str(e)}"}), 500
 
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     """Main webhook handler for all Dialogflow requests"""
     try:
         req = request.get_json()
         
-        # Get intent information
+        # Get intent information and query text
         intent_name = req.get('intentInfo', {}).get('displayName', '')
         parameters = req.get('sessionInfo', {}).get('parameters', {})
+        query_text = req.get('text', '')  # Original user query for date parsing
+        
+        logging.info(f"Webhook called with intent: {intent_name}")
+        logging.info(f"Parameters: {parameters}")
+        logging.info(f"Query text: {query_text}")
         
         if 'events' in intent_name.lower():
             # Handle events inquiry
-            filters = {}
-            if 'area' in parameters:
-                filters['area'] = parameters['area']
-            if 'event_type' in parameters:
-                filters['event_type'] = parameters['event_type']
+            filters = {'query_text': query_text}  # Include original query for date parsing
             
-            events = data_store.get_current_week_events(filters)
-            response_text = format_events_response(events)
+            if 'area' in parameters and parameters['area']:
+                filters['area'] = parameters['area']
+                logging.info(f"Applied area filter: {parameters['area']}")
+            
+            if 'event_type' in parameters and parameters['event_type']:
+                filters['event_type'] = parameters['event_type']
+                logging.info(f"Applied event type filter: {parameters['event_type']}")
+            
+            events = data_store.get_events(filters)
+            response_text = format_events_response(events, filters)
             
         elif 'accommodation' in intent_name.lower():
             # Handle accommodation inquiry
             filters = {}
-            if 'area' in parameters:
+            
+            if 'area' in parameters and parameters['area']:
                 filters['area'] = parameters['area']
-            if 'max_budget' in parameters:
+                logging.info(f"Applied area filter: {parameters['area']}")
+            
+            if 'max_budget' in parameters and parameters['max_budget']:
                 try:
                     filters['max_budget'] = float(parameters['max_budget'])
+                    logging.info(f"Applied budget filter: {parameters['max_budget']}")
                 except (ValueError, TypeError):
-                    pass
-            if 'accommodation_type' in parameters:
-                filters['type'] = parameters['accommodation_type']
+                    logging.warning(f"Invalid budget value: {parameters['max_budget']}")
+            
+            if 'accommodation_type' in parameters and parameters['accommodation_type']:
+                filters['accommodation_type'] = parameters['accommodation_type']
+                logging.info(f"Applied accommodation type filter: {parameters['accommodation_type']}")
             
             accommodations = data_store.get_accommodations(filters)
-            response_text = format_accommodation_response(accommodations)
+            response_text = format_accommodation_response(accommodations, filters)
             
         elif 'outfit' in intent_name.lower():
             # Handle outfit suggestions
             event_type = parameters.get('event_type', 'general')
             gender = parameters.get('gender')
+            
+            logging.info(f"Getting outfits for event_type: {event_type}, gender: {gender}")
             
             outfits = data_store.get_outfit_suggestions(event_type, gender)
             response_text = format_outfit_response(outfits, event_type)
@@ -455,10 +664,10 @@ def webhook():
         else:
             # Default/fallback response
             response_text = ("Hey there! 🌟 I'm your Lagos travel companion! I can help you find:\n\n"
-                           "🔥 Events happening this week\n"
-                           "🏠 Places to stay\n"
-                           "👗 Outfit suggestions\n\n"
-                           "What would you like to explore?")
+                           "🔥 Events happening this week, month, or any specific time\n"
+                           "🏠 Places to stay in any area of Lagos\n"
+                           "👗 Outfit suggestions for any event\n\n"
+                           "Try asking: 'What events are in October?' or 'Show me hotels in Lekki under 30000'")
         
         return jsonify({
             'fulfillmentResponse': {
@@ -486,23 +695,46 @@ def webhook():
             }
         })
 
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'service': 'Lagos Travel Guide - Google Sheets Version',
+        'service': 'Lagos Travel Guide - Enhanced Version',
         'sheets_connected': data_store.gc is not None
     })
 
+
 @app.route('/test-sheets', methods=['GET'])
 def test_sheets():
-    """Test endpoint to verify Google Sheets connection"""
+    """Test endpoint to verify Google Sheets connection and filtering"""
     try:
+        # Test basic data loading
         events = data_store._get_sheet_data('events')
         accommodations = data_store._get_sheet_data('accommodations')
         outfits = data_store._get_sheet_data('outfits')
+        
+        # Test filtering
+        test_filters = {
+            'area': 'lekki',
+            'event_type': 'concert'
+        }
+        
+        filtered_events = data_store.get_events(test_filters)
+        
+        # Test accommodation filtering
+        acc_filters = {
+            'area': 'victoria_island',
+            'max_budget': 50000
+        }
+        
+        filtered_accommodations = data_store.get_accommodations(acc_filters)
+        
+        # Test date range parsing
+        date_parser = DateRangeParser()
+        october_range = date_parser.parse_date_query("events in october")
         
         return jsonify({
             'status': 'success',
@@ -510,6 +742,16 @@ def test_sheets():
                 'events': len(events),
                 'accommodations': len(accommodations),
                 'outfits': len(outfits)
+            },
+            'filtered_results': {
+                'events_in_lekki_concerts': len(filtered_events),
+                'accommodations_vi_under_50k': len(filtered_accommodations)
+            },
+            'date_parsing_test': {
+                'october_range': {
+                    'start': october_range[0].isoformat() if october_range[0] else None,
+                    'end': october_range[1].isoformat() if october_range[1] else None
+                }
             },
             'sample_data': {
                 'events': events[:1] if events else [],
@@ -522,6 +764,40 @@ def test_sheets():
             'status': 'error',
             'error': str(e)
         }), 500
+
+
+@app.route('/test-filters', methods=['POST'])
+def test_filters():
+    """Test endpoint to debug filtering issues"""
+    try:
+        data = request.get_json()
+        filter_type = data.get('type', 'events')  # events, accommodations, outfits
+        filters = data.get('filters', {})
+        
+        if filter_type == 'events':
+            results = data_store.get_events(filters)
+        elif filter_type == 'accommodations':
+            results = data_store.get_accommodations(filters)
+        elif filter_type == 'outfits':
+            event_type = filters.get('event_type', 'general')
+            gender = filters.get('gender')
+            results = data_store.get_outfit_suggestions(event_type, gender)
+        else:
+            return jsonify({'error': 'Invalid filter type'}), 400
+        
+        return jsonify({
+            'filter_type': filter_type,
+            'filters_applied': filters,
+            'results_count': len(results),
+            'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
