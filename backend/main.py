@@ -348,8 +348,8 @@ class GoogleSheetsDataStore:
                 
                 # Apply event type filter
                 if filters and filters.get('event_type'):
-                    event_type = str(event.get('event_type', '')).lower().strip()
-                    filter_type = str(filters['event_type']).lower().strip()
+                    event_type = self._normalize_event_type(event.get('event_type'))
+                    filter_type = self._normalize_event_type(filters['event_type'])
                     
                     if event_type != filter_type:
                         logging.debug(f"Event type filter mismatch: {event_type} != {filter_type}")
@@ -449,10 +449,14 @@ class GoogleSheetsDataStore:
         filtered_outfits = []
         filter_event_type = self._normalize_event_type(event_type) # Normalize the input
         
+        logging.info(f"Filtering outfits for event_type: {event_type} (normalized: {filter_event_type}), gender: {gender}")
+        
         for outfit in outfits:
             try:
                 # Filter by event type
                 outfit_event_type = self._normalize_event_type(outfit.get('event_type'))
+                
+                logging.debug(f"Comparing outfit event_type: {outfit.get('event_type')} (normalized: {outfit_event_type}) with filter: {filter_event_type}")
                 
                 if outfit_event_type != filter_event_type:
                     continue
@@ -632,9 +636,16 @@ def webhook():
         parameters = req.get('sessionInfo', {}).get('parameters', {})
         query_text = req.get('text', '')  # Original user query for date parsing
         
+        # Try alternative parameter extraction paths
+        if not parameters:
+            parameters = req.get('fulfillmentInfo', {}).get('parameters', {})
+        if not parameters:
+            parameters = req.get('parameters', {})
+        
         logging.info(f"Webhook called with intent: {intent_name}")
         logging.info(f"Parameters: {parameters}")
         logging.info(f"Query text: {query_text}")
+        logging.info(f"Full request structure: {json.dumps(req, indent=2)}")
         
         if 'events' in intent_name.lower():
             # Handle events inquiry
@@ -677,6 +688,24 @@ def webhook():
             # Handle outfit suggestions
             event_type = parameters.get('event_type')
             gender = parameters.get('gender')
+            
+            # If no event_type provided, try to get from query context or use a default
+            if not event_type:
+                # Check if there's any event-related context in the query
+                query_lower = query_text.lower() if query_text else ""
+                if 'concert' in query_lower or 'music' in query_lower:
+                    event_type = 'concert'
+                elif 'beach' in query_lower or 'pool' in query_lower:
+                    event_type = 'beach_party'
+                elif 'club' in query_lower or 'party' in query_lower:
+                    event_type = 'club_night'
+                elif 'brunch' in query_lower:
+                    event_type = 'brunch'
+                elif 'december' in query_lower or 'detty' in query_lower:
+                    event_type = 'detty_december'
+                else:
+                    # Default to concert if no specific type found
+                    event_type = 'concert'
             
             logging.info(f"Getting outfits for event_type: {event_type}, gender: {gender}")
             
@@ -801,7 +830,7 @@ def test_filters():
         elif filter_type == 'accommodations':
             results = data_store.get_accommodations(filters)
         elif filter_type == 'outfits':
-            event_type = filters.get('event_type', 'general')
+            event_type = filters.get('event_type', 'concert')  # Default to concert instead of general
             gender = filters.get('gender')
             results = data_store.get_outfit_suggestions(event_type, gender)
         else:
@@ -812,6 +841,133 @@ def test_filters():
             'filters_applied': filters,
             'results_count': len(results),
             'results': results
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/debug-outfits', methods=['GET'])
+def debug_outfits():
+    """Debug endpoint to see all outfit data and test filtering"""
+    try:
+        # Get all outfit data
+        all_outfits = data_store._get_sheet_data('outfits')
+        
+        # Test different event types
+        test_results = {}
+        event_types = ['concert', 'beach_party', 'club_night', 'brunch', 'detty_december']
+        
+        for event_type in event_types:
+            outfits = data_store.get_outfit_suggestions(event_type)
+            test_results[event_type] = {
+                'count': len(outfits),
+                'outfits': outfits
+            }
+        
+        return jsonify({
+            'all_outfits_count': len(all_outfits),
+            'all_outfits': all_outfits,
+            'test_results': test_results
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/test-webhook', methods=['POST'])
+def test_webhook():
+    """Test endpoint to simulate webhook calls"""
+    try:
+        data = request.get_json()
+        
+        # Simulate different webhook requests
+        test_cases = [
+            {
+                'name': 'outfit_request_no_params',
+                'request': {
+                    'intentInfo': {'displayName': 'outfit.suggestions'},
+                    'sessionInfo': {'parameters': {}},
+                    'text': 'What should I wear to a concert?'
+                }
+            },
+            {
+                'name': 'outfit_request_with_event_type',
+                'request': {
+                    'intentInfo': {'displayName': 'outfit.suggestions'},
+                    'sessionInfo': {'parameters': {'event_type': 'concert'}},
+                    'text': 'Concert outfits'
+                }
+            },
+            {
+                'name': 'event_request_with_area',
+                'request': {
+                    'intentInfo': {'displayName': 'events.inquiry'},
+                    'sessionInfo': {'parameters': {'area': 'lekki'}},
+                    'text': 'Events in Lekki'
+                }
+            }
+        ]
+        
+        results = {}
+        for test_case in test_cases:
+            # Temporarily replace the request data
+            original_req = request.get_json()
+            request._cached_json = test_case['request']
+            
+            try:
+                # Call the webhook function
+                response = webhook()
+                results[test_case['name']] = {
+                    'status': 'success',
+                    'response': response.get_json()
+                }
+            except Exception as e:
+                results[test_case['name']] = {
+                    'status': 'error',
+                    'error': str(e)
+                }
+            finally:
+                # Restore original request
+                request._cached_json = original_req
+        
+        return jsonify(results)
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/test-parameters', methods=['POST'])
+def test_parameters():
+    """Test endpoint to check parameter extraction"""
+    try:
+        data = request.get_json()
+        
+        # Extract parameters using the same logic as webhook
+        intent_name = data.get('intentInfo', {}).get('displayName', '')
+        parameters = data.get('sessionInfo', {}).get('parameters', {})
+        query_text = data.get('text', '')
+        
+        # Try alternative parameter extraction paths
+        if not parameters:
+            parameters = data.get('fulfillmentInfo', {}).get('parameters', {})
+        if not parameters:
+            parameters = data.get('parameters', {})
+        
+        return jsonify({
+            'intent_name': intent_name,
+            'parameters': parameters,
+            'query_text': query_text,
+            'full_request': data
         })
         
     except Exception as e:
