@@ -281,7 +281,29 @@ class GoogleSheetsDataStore:
         
         logging.debug(f"Could not parse date: {date_str}")
         return None
-    
+
+    def _normalize_event_type(self, event_type_value):
+        """Normalize event type values for flexible comparison."""
+        if not event_type_value:
+            return None
+
+        event_str = str(event_type_value).lower().strip().replace(' ', '_')
+
+        # Event type mappings
+        event_mappings = {
+            'concert': ['concert', 'music_show', 'show', 'live_music'],
+            'beach_party': ['beach_party', 'beach', 'pool_party'],
+            'club_night': ['club_night', 'club', 'party', 'turn_up'],
+            'brunch': ['brunch', 'day_party'],
+            'detty_december': ['detty_december', 'december_fest']
+        }
+
+        for canonical, variations in event_mappings.items():
+            if event_str in variations:
+                return canonical
+
+        return event_str
+        
     def get_events(self, filters=None, date_range=None):
         """Get events with improved filtering and date range support"""
         events = self._get_sheet_data('events')
@@ -425,12 +447,12 @@ class GoogleSheetsDataStore:
             return []
         
         filtered_outfits = []
+        filter_event_type = self._normalize_event_type(event_type) # Normalize the input
         
         for outfit in outfits:
             try:
                 # Filter by event type
-                outfit_event_type = str(outfit.get('event_type', '')).lower().strip()
-                filter_event_type = str(event_type).lower().strip()
+                outfit_event_type = self._normalize_event_type(outfit.get('event_type'))
                 
                 if outfit_event_type != filter_event_type:
                     continue
