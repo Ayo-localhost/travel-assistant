@@ -675,7 +675,7 @@ def webhook():
             
         elif 'outfit' in intent_name.lower():
             # Handle outfit suggestions
-            event_type = parameters.get('event_type', 'general')
+            event_type = parameters.get('event_type')
             gender = parameters.get('gender')
             
             logging.info(f"Getting outfits for event_type: {event_type}, gender: {gender}")
