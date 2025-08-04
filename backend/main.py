@@ -603,7 +603,7 @@ def format_accommodation_response(accommodations, filters=None):
 def format_outfit_response(outfits, event_type):
     """Format outfit suggestions for response"""
     if not outfits:
-        return f"I don't have outfit suggestions for {event_type.replace('_', ' ')} right now, but I'm always updating my style database! 💫"
+        return f"Hmmm, I don't have outfit suggestions for {event_type.replace('_', ' ')} right now, but you could always back later or visit pinterest for inspiration if you can't wait! 💫"
     
     response_text = f"Perfect! Here are stunning {event_type.replace('_', ' ')} looks:\n\n"
     
@@ -852,12 +852,10 @@ def webhook():
             
         else:
             # Default/fallback response
-            response_text = ("Hey there! 🌟 I'm your Lagos travel companion! I can help you find:\n\n"
-                           "🔥 Events happening this week, month, or any specific time\n"
-                           "🏠 Places to stay in any area of Lagos\n"
-                           "👗 Outfit suggestions for any event\n"
-                           "🌟 Complete trip planning with all categories\n\n"
-                           "Try asking: 'Plan my trip to Lagos' or 'What events are in October?' or 'Show me hotels in Lekki'")
+            response_text = ("Hey there! Ready to Detty this December in Lagos? \n\n"
+                           "🔥 I am Yinka and I can help you plan your trip, find events, comfy places to stay, or outfit inspo. \n"
+                           "🌟 What would you like to explore?\n\n"
+                           "Try asking: 'What should I wear for brunch' or 'What events are in Ikeja?' or 'Show me hotels in Lekki'")
         
         return jsonify({
             'fulfillmentResponse': {
