@@ -1,3 +1,5 @@
+"use client";
+
 import { useRef, useEffect } from "react";
 import {
   Button,
@@ -18,6 +20,7 @@ import {
   RocketOutlined,
   CompassOutlined,
   UserOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { useTravelChat } from "./usetravelchat";
 
@@ -35,6 +38,8 @@ export default function TravelAdvisor() {
     handleSubmit,
     isLoading,
     sendMessage,
+    sessionId,
+    clearSession,
   } = useTravelChat();
 
   useEffect(() => {
@@ -53,7 +58,7 @@ export default function TravelAdvisor() {
   const suggestedQuestions = [
     "🔥 Events happening in December",
     "🏠 Where to stay in Lagos",
-    "🧳 Help me plan my trip",
+    "🧳 Help me plan my trip in Lekki",
     "👗 Outfit suggestions",
   ];
 
@@ -113,7 +118,7 @@ export default function TravelAdvisor() {
                     backgroundClip: "text",
                   }}
                 >
-                  Yinka
+                  Yink.ai
                 </Title>
               </Flex>
             </Space>
@@ -132,17 +137,29 @@ export default function TravelAdvisor() {
                   <CompassOutlined style={{ fontSize: 20 }} />
                   <span>Chat with your Travel Advisor</span>
                 </Flex>
-                {/* Optional: Add scroll to bottom button */}
-                {messages.length > 3 && (
+                <Flex gap={8}>
+                  {/* Optional: Add session reset button for testing */}
                   <Button
                     type="text"
                     size="small"
-                    onClick={scrollToBottom}
+                    onClick={clearSession}
+                    icon={<ReloadOutlined />}
                     style={{ color: "white" }}
+                    title="Reset Session"
                   >
-                    ↓ Latest
+                    Reset
                   </Button>
-                )}
+                  {messages.length > 3 && (
+                    <Button
+                      type="text"
+                      size="small"
+                      onClick={scrollToBottom}
+                      style={{ color: "white" }}
+                    >
+                      ↓ Latest
+                    </Button>
+                  )}
+                </Flex>
               </Flex>
             }
             headStyle={{
@@ -162,7 +179,7 @@ export default function TravelAdvisor() {
                 overflowY: "auto",
                 padding: 24,
                 background: token.colorBgContainer,
-                scrollBehavior: "smooth", // Enable smooth scrolling
+                scrollBehavior: "smooth",
               }}
             >
               {messages.length === 0 ? (
@@ -229,6 +246,7 @@ export default function TravelAdvisor() {
                               transition: "all 0.3s ease",
                             }}
                             onClick={() => handleSuggestedQuestion(question)}
+                            disabled={!sessionId} // Disable until session is ready
                           >
                             <EnvironmentOutlined
                               style={{
@@ -259,7 +277,6 @@ export default function TravelAdvisor() {
                           message.role === "user" ? "flex-end" : "flex-start",
                         alignItems: "flex-start",
                       }}
-                      // Add special styling for the last message
                       className={
                         index === messages.length - 1 ? "last-message" : ""
                       }
@@ -271,7 +288,6 @@ export default function TravelAdvisor() {
                             backgroundColor: token.colorPrimary,
                             flexShrink: 0,
                             boxShadow: `0 4px 12px ${token.colorPrimary}30`,
-                            // Highlight last message
                             ...(index === messages.length - 1 && {
                               boxShadow: `0 6px 16px ${token.colorPrimary}50`,
                               transform: "scale(1.05)",
@@ -296,7 +312,6 @@ export default function TravelAdvisor() {
                               ? `0 4px 12px ${token.colorPrimary}30`
                               : `0 2px 8px ${token.colorBgElevated}60`,
                           position: "relative",
-                          // Highlight last message
                           ...(index === messages.length - 1 && {
                             boxShadow:
                               message.role === "user"
@@ -321,7 +336,6 @@ export default function TravelAdvisor() {
                         >
                           {message.content}
                         </Text>
-                        {/* Show "Latest" badge on last message */}
                         {index === messages.length - 1 &&
                           messages.length > 1 && (
                             <div
@@ -348,7 +362,6 @@ export default function TravelAdvisor() {
                             backgroundColor: token.colorTextSecondary,
                             flexShrink: 0,
                             boxShadow: `0 4px 12px ${token.colorTextSecondary}30`,
-                            // Highlight last message
                             ...(index === messages.length - 1 && {
                               boxShadow: `0 6px 16px ${token.colorTextSecondary}50`,
                               transform: "scale(1.05)",
@@ -359,7 +372,6 @@ export default function TravelAdvisor() {
                       )}
                     </div>
                   ))}
-
                   {isLoading && (
                     <div
                       style={{
@@ -409,8 +421,6 @@ export default function TravelAdvisor() {
                       </div>
                     </div>
                   )}
-
-                  {/* Invisible element to scroll to */}
                   <div ref={messagesEndRef} style={{ height: 1 }} />
                 </Space>
               )}
@@ -430,12 +440,16 @@ export default function TravelAdvisor() {
                     name="prompt"
                     value={input}
                     onChange={handleInputChange}
-                    placeholder="Ask about destinations, travel tips, planning advice..."
-                    disabled={isLoading}
+                    placeholder={
+                      sessionId
+                        ? "Ask about destinations, travel tips, planning advice..."
+                        : "Initializing session..."
+                    }
+                    disabled={isLoading || !sessionId}
                     size="large"
                     onPressEnter={(e) => {
                       e.preventDefault();
-                      if (!isLoading && input.trim()) {
+                      if (!isLoading && input.trim() && sessionId) {
                         handleSubmit(e);
                       }
                     }}
@@ -456,7 +470,7 @@ export default function TravelAdvisor() {
                   <Button
                     type="primary"
                     htmlType="submit"
-                    disabled={isLoading || !input.trim()}
+                    disabled={isLoading || !input.trim() || !sessionId}
                     size="large"
                     loading={isLoading}
                     icon={!isLoading && <SendOutlined />}
