@@ -639,12 +639,15 @@ def chat_with_agent():
 
         data = request.get_json()
         user_message = data.get('message')
+        session_id = data.get('session_id')
         user_id = data.get('user_id', str(uuid.uuid4()))
 
         if not user_message:
             return jsonify({"error": "Message field is required"}), 400
 
-        session_id = f"session-{user_id}"
+        # Use provided session_id if present, else generate one
+        if not session_id:
+            session_id = f"session-{user_id}"
         session_path = session_client.session_path(PROJECT_ID, REGION, AGENT_ID, session_id)
 
         text_input = dialogflow_cx.types.TextInput(text=user_message)
